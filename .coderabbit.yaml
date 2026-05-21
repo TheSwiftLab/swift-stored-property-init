@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "ko-KR"
+early_access: false
+
+tone_instructions: >
+  당신은 Swift 매크로와 Swift Package 리뷰어입니다. public API 안정성, SwiftSyntax 기반 구현 정확성,
+  진단 품질, 테스트 완전성을 중심으로 명확하고 교육적으로 리뷰해주세요.
+
+reviews:
+  profile: "chill"
+  review_status: false
+  commit_status: false
+  in_progress_fortune: false
+  request_changes_workflow: false
+  high_level_summary: true
+  changed_files_summary: false
+  sequence_diagrams: false
+  assess_linked_issues: true
+  related_issues: false
+  related_prs: false
+  suggested_labels: false
+  auto_apply_labels: false
+  suggested_reviewers: false
+  auto_assign_reviewers: false
+  poem: false
+
+  path_instructions:
+    - path: Sources/**/*.swift
+      instructions: |
+        1. Swift 매크로 public API가 단순하고 일관적인지 확인해주세요.
+        2. SwiftSyntax 기반 구문 해석이 선언 종류, modifier, stored property 조건을 정확히 처리하는지 검토해주세요.
+        3. 생성되는 init 시그니처와 본문이 스펙과 정확히 일치하는지 확인해주세요.
+        4. access control, defaults, first label, duplicate init 처리 규칙이 누락되지 않았는지 확인해주세요.
+        5. 진단 메시지가 모호하지 않고 실패 원인을 바로 이해할 수 있는지 검토해주세요.
+
+    - path: Tests/**/*.swift
+      instructions: |
+        1. 테스트가 매크로 확장 결과와 diagnostics를 공개 동작 기준으로 검증하는지 확인해주세요.
+        2. happy path 뿐 아니라 final class 제약, multi-binding, property wrapper, explicit type 누락 같은 경계 조건이 포함되는지 검토해주세요.
+        3. 구현 세부사항보다 생성 결과와 오류 메시지 계약을 검증하는 테스트인지 확인해주세요.
+
+    - path: Package.swift
+      instructions: |
+        1. Swift Package 구조가 library product, macro target, test target 관점에서 명확한지 확인해주세요.
+        2. swift-syntax 계열 의존성과 툴체인 설정이 배포 목적에 맞는지 검토해주세요.
+
+  auto_review:
+    enabled: true
+    drafts: true
+    auto_incremental_review: true
+
+  tools:
+    github-checks:
+      enabled: true
+      timeout_ms: 300000
+
+chat:
+  auto_reply: false
+
+knowledge_base:
+  web_search:
+    enabled: true
+  learnings:
+    scope: local
+  issues:
+    scope: local
+  pull_requests:
+    scope: local
