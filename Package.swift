@@ -1,4 +1,4 @@
-// swift-tools-version: 6.3
+// swift-tools-version: 6.1
 
 import CompilerPluginSupport
 import Foundation
@@ -16,7 +16,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "603.0.0-latest"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.1"),
     ] + (isRunningInXcode ? [
         .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins.git", exact: "0.63.2"),
     ] : []),
