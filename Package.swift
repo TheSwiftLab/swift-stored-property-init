@@ -26,6 +26,7 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                .product(name: "SwiftDiagnostics", package: "swift-syntax"),
             ],
             plugins: isRunningInXcode ? [
                 .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
@@ -40,7 +41,11 @@ let package = Package(
         ),
         .testTarget(
             name: "StoredPropertyInitTests",
-            dependencies: ["StoredPropertyInitMacros"],
+            dependencies: [
+                "StoredPropertyInitMacros",
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+            ],
             plugins: isRunningInXcode ? [
                 .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
             ] : []
