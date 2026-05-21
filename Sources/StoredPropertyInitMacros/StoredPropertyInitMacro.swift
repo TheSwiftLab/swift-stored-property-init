@@ -16,6 +16,6 @@ public struct StoredPropertyInitMacro: MemberMacro {
 @main
 struct StoredPropertyInitPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
-        StoredPropertyInitMacro.self,
+        StoredPropertyInitMacro.self
     ]
 }
