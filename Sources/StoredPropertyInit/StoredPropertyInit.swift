@@ -15,7 +15,7 @@
 ///   - defaults: 기본값을 파라미터에 반영할지 지정합니다.
 ///   - firstLabel: 첫 번째 파라미터 레이블 정책입니다.
 @attached(member, names: named(init))
-public macro PropertyInit(
+public macro StoredPropertyInit(
     _ access: InitAccess = .internal,
     mode: InitMode = .storedProperties,
     defaults: InitDefaults = .omitted,

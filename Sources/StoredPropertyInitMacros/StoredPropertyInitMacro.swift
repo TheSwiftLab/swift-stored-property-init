@@ -3,7 +3,7 @@ import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxMacros
 
-/// `@PropertyInit`의 매크로 구현입니다.
+/// `@StoredPropertyInit`의 매크로 구현입니다.
 ///
 /// 현재 구현 범위는 매크로를 적용할 수 있는 선언 대상을 검증하는 것까지입니다.
 public struct StoredPropertyInitMacro: MemberMacro {
@@ -36,7 +36,7 @@ public struct StoredPropertyInitMacro: MemberMacro {
 }
 
 private extension StoredPropertyInitMacro {
-    /// 주어진 선언이 `@PropertyInit`의 지원 대상인지 판별합니다.
+    /// 주어진 선언이 `@StoredPropertyInit`의 지원 대상인지 판별합니다.
     ///
     /// - Parameter declaration: 매크로가 적용된 선언입니다.
     /// - Returns: `struct`, `final class`, `actor`면 `true`, 아니면 `false`입니다.
@@ -70,7 +70,7 @@ private extension StoredPropertyInitMacro {
 private extension DeclModifierSyntax {
     /// 현재 modifier가 `final`인지 나타냅니다.
     ///
-    /// 이 값은 `class` 선언이 `@PropertyInit`의 지원 대상인지
+    /// 이 값은 `class` 선언이 `@StoredPropertyInit`의 지원 대상인지
     /// 판별할 때 사용합니다.
     var isFinalModifier: Bool {
         name.tokenKind == .keyword(.final)

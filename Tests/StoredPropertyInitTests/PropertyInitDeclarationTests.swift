@@ -5,13 +5,13 @@ import StoredPropertyInitMacros
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
 
-/// `@PropertyInit` 매크로의 선언 적용 가능 여부를 검증하는 테스트입니다.
+/// `@StoredPropertyInit` 매크로의 선언 적용 가능 여부를 검증하는 테스트입니다.
 final class PropertyInitDeclarationTests: XCTestCase {
     /// `struct` 선언에는 매크로를 적용할 수 있음을 검증합니다.
     func testStoredPropertyInitAllowsStruct() throws {
         assertMacroExpansion(
             """
-            @PropertyInit
+            @StoredPropertyInit
             struct User { }
             """,
             expandedSource: """
@@ -25,7 +25,7 @@ final class PropertyInitDeclarationTests: XCTestCase {
     func testStoredPropertyInitAllowsFinalClass() throws {
         assertMacroExpansion(
             """
-            @PropertyInit
+            @StoredPropertyInit
             final class Service { }
             """,
             expandedSource: """
@@ -39,7 +39,7 @@ final class PropertyInitDeclarationTests: XCTestCase {
     func testStoredPropertyInitAllowsActor() throws {
         assertMacroExpansion(
             """
-            @PropertyInit
+            @StoredPropertyInit
             actor Store { }
             """,
             expandedSource: """
@@ -53,7 +53,7 @@ final class PropertyInitDeclarationTests: XCTestCase {
     func testStoredPropertyInitRejectsNonFinalClass() throws {
         assertMacroExpansion(
             """
-            @PropertyInit
+            @StoredPropertyInit
             class ViewModel { }
             """,
             expandedSource: """
@@ -61,7 +61,7 @@ final class PropertyInitDeclarationTests: XCTestCase {
             """,
             diagnostics: [
                 DiagnosticSpec(
-                    message: "@PropertyInit requires classes to be final.",
+                    message: "@StoredPropertyInit requires classes to be final.",
                     line: 1,
                     column: 1
                 )
@@ -74,7 +74,7 @@ final class PropertyInitDeclarationTests: XCTestCase {
     func testStoredPropertyInitRejectsUnsupportedDeclaration() throws {
         assertMacroExpansion(
             """
-            @PropertyInit
+            @StoredPropertyInit
             enum FeatureFlag { }
             """,
             expandedSource: """
@@ -82,7 +82,7 @@ final class PropertyInitDeclarationTests: XCTestCase {
             """,
             diagnostics: [
                 DiagnosticSpec(
-                    message: "@PropertyInit can only be applied to a struct, final class, or actor.",
+                    message: "@StoredPropertyInit can only be applied to a struct, final class, or actor.",
                     line: 1,
                     column: 1
                 )
@@ -95,7 +95,7 @@ final class PropertyInitDeclarationTests: XCTestCase {
 /// 매크로 expansion 테스트에서 사용할 매크로 이름 매핑을 생성합니다.
 private func makeTestMacros() -> [String: Macro.Type] {
     [
-        "PropertyInit": StoredPropertyInitMacro.self
+        "StoredPropertyInit": StoredPropertyInitMacro.self
     ]
 }
 #endif
