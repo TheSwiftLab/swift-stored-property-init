@@ -8,7 +8,7 @@ let isRunningInXcode = ProcessInfo.processInfo.environment["__CFBundleIdentifier
 
 let package = Package(
     name: "StoredPropertyInit",
-    platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13)],
+    platforms: [.macOS(.v12), .iOS(.v13), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13)],
     products: [
         .library(
             name: "StoredPropertyInit",
@@ -26,6 +26,7 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                .product(name: "SwiftDiagnostics", package: "swift-syntax")
             ],
             plugins: isRunningInXcode ? [
                 .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
@@ -40,7 +41,11 @@ let package = Package(
         ),
         .testTarget(
             name: "StoredPropertyInitTests",
-            dependencies: ["StoredPropertyInitMacros"],
+            dependencies: [
+                "StoredPropertyInitMacros",
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+            ],
             plugins: isRunningInXcode ? [
                 .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
             ] : []
