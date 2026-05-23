@@ -1,6 +1,7 @@
 /// 저장 프로퍼티 기반 initializer 생성을 위한 attached member macro입니다.
 ///
-/// 현재 단계에서는 선언 적용 가능 여부만 검증하며, 실제 initializer는 생성하지 않습니다.
+/// 현재 단계에서는 선언 적용 가능 여부와 저장 프로퍼티 수집 규칙을 검증하며,
+/// 실제 initializer는 생성하지 않습니다.
 ///
 /// 적용 가능한 선언:
 /// - `struct`
@@ -23,6 +24,21 @@ public macro StoredPropertyInit(
 ) = #externalMacro(
     module: "StoredPropertyInitMacros",
     type: "StoredPropertyInitMacro"
+)
+
+/// property wrapper 사용 프로퍼티를 initializer 파라미터에 명시적으로 포함합니다.
+///
+/// `@StoredPropertyInit`은 property wrapper 사용 프로퍼티를 기본적으로 제외합니다.
+/// 이 매크로를 함께 사용하면 전달한 wrapper 타입을 이후 생성될 initializer
+/// 파라미터 타입으로 사용합니다.
+///
+/// - Parameter type: initializer 파라미터에 사용할 property wrapper 타입입니다.
+@attached(peer)
+public macro WrappedInit<Wrapper>(
+    type: Wrapper.Type
+) = #externalMacro(
+    module: "StoredPropertyInitMacros",
+    type: "WrappedInitMacro"
 )
 
 /// 생성될 initializer의 접근 제어 수준입니다.

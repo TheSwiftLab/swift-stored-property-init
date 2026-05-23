@@ -269,6 +269,7 @@ struct StoredPropertyInitPlugin: CompilerPlugin {
     /// 컴파일러는 이 배열을 통해 현재 플러그인이 어떤 매크로 구현을
     /// 노출하는지 식별합니다.
     let providingMacros: [Macro.Type] = [
-        StoredPropertyInitMacro.self
+        StoredPropertyInitMacro.self,
+        WrappedInitMacro.self
     ]
 }
