@@ -126,7 +126,7 @@ final class StoredPropertyCollectionTests: XCTestCase {
             """,
             diagnostics: [
                 DiagnosticSpec(
-                    message: "StoredPropertyInit skipped property wrapper property 'name'.",
+                    message: "StoredPropertyInit skipped attribute-decorated property 'name'.",
                     line: 3,
                     column: 5,
                     severity: .note

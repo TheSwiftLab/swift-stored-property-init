@@ -8,7 +8,7 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// 지원하지 않는 선언 종류에 적용되었음을 나타내는 에러입니다.
     case unsupportedDeclaration
 
-    /// 프로퍼티 래퍼 사용 프로퍼티를 건너뛴다는 note입니다.
+    /// attribute가 붙어 자동 수집하지 않는 프로퍼티를 건너뛴다는 note입니다.
     case skippedPropertyWrapper(name: String)
 
     /// 지원하지 않는 저장 프로퍼티 형태를 건너뛴다는 note입니다.
@@ -25,7 +25,7 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
         case .unsupportedDeclaration:
             return "@StoredPropertyInit can only be applied to a struct, final class, or actor."
         case let .skippedPropertyWrapper(name):
-            return "StoredPropertyInit skipped property wrapper property '\(name)'."
+            return "StoredPropertyInit skipped attribute-decorated property '\(name)'."
         case let .skippedStoredProperty(name):
             guard let name else {
                 return "StoredPropertyInit skipped a computed, static, lazy, or multi-binding property."
