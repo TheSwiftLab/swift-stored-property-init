@@ -5,12 +5,13 @@ import SwiftSyntaxMacros
 
 /// `@StoredPropertyInit`의 매크로 구현입니다.
 ///
-/// 현재 구현 범위는 매크로를 적용할 수 있는 선언 대상을 검증하는 것까지입니다.
+/// 현재 구현 범위는 매크로 적용 대상 검증과 initializer 파라미터 후보가 될
+/// 저장 프로퍼티 수집입니다.
 public struct StoredPropertyInitMacro: MemberMacro {
     /// 매크로가 선언에 제공할 멤버를 확장합니다.
     ///
     /// 현재 단계에서는 initializer를 실제로 생성하지 않으므로 항상 빈 배열을 반환합니다.
-    /// 대신 선언 대상이 유효한지 검사하고, 유효하지 않으면 진단을 추가합니다.
+    /// 대신 선언 대상과 저장 프로퍼티 수집 규칙을 검사하고, 필요하면 진단을 추가합니다.
     ///
     /// - Parameters:
     ///   - node: 선언에 붙은 매크로 attribute 구문입니다.
@@ -40,7 +41,7 @@ private extension StoredPropertyInitMacro {
     /// initializer 파라미터 후보가 될 저장 프로퍼티 정보입니다.
     struct StoredProperty {
         /// 프로퍼티 이름 토큰입니다.
-        let propertyName: TokenSyntax
+        let name: TokenSyntax
 
         /// 프로퍼티 타입 구문입니다.
         let typeSyntax: TypeSyntax?
@@ -50,6 +51,9 @@ private extension StoredPropertyInitMacro {
 
         /// 저장 프로퍼티가 `let`인지 나타냅니다.
         let isStoredAsLet: Bool
+
+        /// `@WrappedInit(type:)`에 전달된 wrapper 타입 표현식입니다.
+        let wrappedInitTypeExpression: ExprSyntax?
     }
 
     /// 주어진 선언이 `@StoredPropertyInit`의 지원 대상인지 판별합니다.
@@ -130,11 +134,15 @@ private extension StoredPropertyInitMacro {
             return nil
         }
 
-        guard !variableDeclaration.attributes.containsPropertyWrapperAttribute else {
+        let containsWrappedInitAttribute = variableDeclaration.attributes.containsWrappedInitAttribute
+        let containsPropertyWrapperAttribute = variableDeclaration.attributes.containsPropertyWrapperAttribute
+
+        guard !containsPropertyWrapperAttribute || containsWrappedInitAttribute else {
             diagnoseSkippedPropertyWrapper(variableDeclaration, in: context)
             return nil
         }
 
+        let wrappedInitTypeExpression = variableDeclaration.attributes.wrappedInitTypeExpression
         guard let binding = variableDeclaration.bindings.first else {
             diagnoseSkippedStoredProperty(variableDeclaration, in: context)
             return nil
@@ -151,10 +159,11 @@ private extension StoredPropertyInitMacro {
         }
 
         return StoredProperty(
-            propertyName: identifierPattern.identifier,
+            name: identifierPattern.identifier,
             typeSyntax: binding.typeAnnotation?.type,
             initializerClauseSyntax: binding.initializer,
-            isStoredAsLet: variableDeclaration.bindingSpecifier.tokenKind == .keyword(.let)
+            isStoredAsLet: variableDeclaration.bindingSpecifier.tokenKind == .keyword(.let),
+            wrappedInitTypeExpression: wrappedInitTypeExpression
         )
     }
 
@@ -215,12 +224,68 @@ private extension DeclModifierSyntax {
 
 private extension AttributeListSyntax {
     /// 프로퍼티 래퍼로 취급할 attribute가 포함되어 있는지 나타냅니다.
-    ///
-    /// 현재 단계에서는 선언에 붙은 attribute가 있으면
-    /// property-wrapper 사용 프로퍼티로 간주합니다.
     var containsPropertyWrapperAttribute: Bool {
         contains { element in
-            element.as(AttributeSyntax.self) != nil
+            guard let attribute = element.as(AttributeSyntax.self) else {
+                return false
+            }
+
+            guard !attribute.isWrappedInitAttribute else {
+                return false
+            }
+
+            return attribute.arguments.isPropertyWrapperCompatible
+        }
+    }
+
+    /// `@WrappedInit(type:)` marker가 포함되어 있는지 나타냅니다.
+    var containsWrappedInitAttribute: Bool {
+        contains { element in
+            element.as(AttributeSyntax.self)?.isWrappedInitAttribute == true
+        }
+    }
+
+    /// `@WrappedInit(type:)`에 전달된 wrapper 타입 표현식입니다.
+    var wrappedInitTypeExpression: ExprSyntax? {
+        compactMap { element in
+            element.as(AttributeSyntax.self)
+        }
+        .first(where: \.isWrappedInitAttribute)?
+        .wrappedInitTypeExpression
+    }
+}
+
+private extension AttributeSyntax {
+    /// 현재 attribute가 `@WrappedInit`인지 나타냅니다.
+    var isWrappedInitAttribute: Bool {
+        simpleName == "WrappedInit"
+    }
+
+    /// module qualifier를 제외한 attribute 이름입니다.
+    var simpleName: String {
+        String(attributeName.description.split(separator: ".").last ?? "")
+    }
+
+    /// `@WrappedInit(type:)`에 전달된 wrapper 타입 표현식입니다.
+    var wrappedInitTypeExpression: ExprSyntax? {
+        guard case let .argumentList(arguments) = arguments else {
+            return nil
+        }
+
+        return arguments.first { argument in
+            argument.label?.text == "type"
+        }?.expression
+    }
+}
+
+private extension AttributeSyntax.Arguments? {
+    /// 현재 arguments 형태가 property wrapper attribute와 호환되는지 나타냅니다.
+    var isPropertyWrapperCompatible: Bool {
+        switch self {
+        case nil, .argumentList:
+            return true
+        default:
+            return false
         }
     }
 }
