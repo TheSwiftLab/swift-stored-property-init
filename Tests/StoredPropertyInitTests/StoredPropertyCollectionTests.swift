@@ -136,6 +136,25 @@ final class StoredPropertyCollectionTests: XCTestCase {
         )
     }
 
+    /// `@WrappedInit(type:)`가 붙은 프로퍼티 래퍼 사용 프로퍼티는 수집 대상에서 제외하지 않음을 검증합니다.
+    func testStoredPropertyInitAllowsWrappedInitPropertyWrapperProperty() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct ToggleRow {
+                @WrappedInit(type: Binding<Bool>.self)
+                @Binding var isOn: Bool
+            }
+            """,
+            expandedSource: """
+            struct ToggleRow {
+                @Binding var isOn: Bool
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
     /// 멀티 바인딩 선언은 저장 프로퍼티 수집 대상에서 제외함을 검증합니다.
     func testStoredPropertyInitSkipsMultiBindingDeclaration() throws {
         assertMacroExpansion(
