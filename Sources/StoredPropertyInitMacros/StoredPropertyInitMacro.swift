@@ -154,7 +154,7 @@ private extension StoredPropertyInitMacro {
         }
 
         guard let identifierPattern = binding.pattern.as(IdentifierPatternSyntax.self) else {
-            diagnoseSkippedStoredProperty(variableDeclaration, in: context)
+            diagnoseSkippedPropertyPattern(variableDeclaration, in: context)
             return nil
         }
 
@@ -180,6 +180,20 @@ private extension StoredPropertyInitMacro {
         let diagnosticMessage = StoredPropertyInitDiagnosticMessage.skippedStoredProperty(
             name: propertyName
         )
+
+        context.diagnose(Diagnostic(node: Syntax(variableDeclaration), message: diagnosticMessage))
+    }
+
+    /// 이름으로 사용할 수 없는 패턴을 note로 보고합니다.
+    ///
+    /// - Parameters:
+    ///   - variableDeclaration: 제외할 프로퍼티 선언입니다.
+    ///   - context: 진단을 보고할 확장 컨텍스트입니다.
+    static func diagnoseSkippedPropertyPattern(
+        _ variableDeclaration: VariableDeclSyntax,
+        in context: some MacroExpansionContext
+    ) {
+        let diagnosticMessage = StoredPropertyInitDiagnosticMessage.skippedNonIdentifierPattern
 
         context.diagnose(Diagnostic(node: Syntax(variableDeclaration), message: diagnosticMessage))
     }

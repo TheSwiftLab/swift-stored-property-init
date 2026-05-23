@@ -180,5 +180,39 @@ final class StoredPropertyCollectionTests: XCTestCase {
             macros: makeTestMacros()
         )
     }
+
+    /// 단순 이름이 아닌 패턴은 저장 프로퍼티 수집 대상에서 제외함을 검증합니다.
+    func testStoredPropertyInitSkipsNonIdentifierPattern() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Point {
+                let (x, y): (Int, Int)
+                let _: String
+            }
+            """,
+            expandedSource: """
+            struct Point {
+                let (x, y): (Int, Int)
+                let _: String
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit skipped a property because its pattern is not a simple identifier.",
+                    line: 3,
+                    column: 5,
+                    severity: .note
+                ),
+                DiagnosticSpec(
+                    message: "StoredPropertyInit skipped a property because its pattern is not a simple identifier.",
+                    line: 4,
+                    column: 5,
+                    severity: .note
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
 }
 #endif

@@ -14,6 +14,9 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// 지원하지 않는 저장 프로퍼티 형태를 건너뛴다는 note입니다.
     case skippedStoredProperty(name: String?)
 
+    /// 이름으로 사용할 수 없는 패턴을 건너뛴다는 note입니다.
+    case skippedNonIdentifierPattern
+
     /// 사용자에게 표시할 진단 메시지 본문입니다.
     var message: String {
         switch self {
@@ -29,6 +32,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             }
 
             return "StoredPropertyInit skipped computed, static, lazy, or multi-binding property '\(name)'."
+        case .skippedNonIdentifierPattern:
+            return "StoredPropertyInit skipped a property because its pattern is not a simple identifier."
         }
     }
 
@@ -48,6 +53,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             "skippedPropertyWrapper"
         case .skippedStoredProperty:
             "skippedStoredProperty"
+        case .skippedNonIdentifierPattern:
+            "skippedNonIdentifierPattern"
         }
     }
 
@@ -56,7 +63,7 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
         switch self {
         case .requiresFinalClass, .unsupportedDeclaration:
             .error
-        case .skippedPropertyWrapper, .skippedStoredProperty:
+        case .skippedPropertyWrapper, .skippedStoredProperty, .skippedNonIdentifierPattern:
             .note
         }
     }
