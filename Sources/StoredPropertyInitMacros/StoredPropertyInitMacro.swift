@@ -25,6 +25,7 @@ public struct StoredPropertyInitMacro: MemberMacro {
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         if isSupportedDeclaration(declaration) {
+            _ = collectStoredProperties(from: declaration, in: context)
             return []
         }
 
@@ -36,6 +37,21 @@ public struct StoredPropertyInitMacro: MemberMacro {
 }
 
 private extension StoredPropertyInitMacro {
+    /// initializer 파라미터 후보가 될 저장 프로퍼티 정보입니다.
+    struct StoredProperty {
+        /// 프로퍼티 이름 토큰입니다.
+        let propertyName: TokenSyntax
+
+        /// 프로퍼티 타입 구문입니다.
+        let typeSyntax: TypeSyntax?
+
+        /// 프로퍼티 기본값 구문입니다.
+        let initializerClauseSyntax: InitializerClauseSyntax?
+
+        /// 저장 프로퍼티가 `let`인지 나타냅니다.
+        let isStoredAsLet: Bool
+    }
+
     /// 주어진 선언이 `@StoredPropertyInit`의 지원 대상인지 판별합니다.
     ///
     /// - Parameter declaration: 매크로가 적용된 선언입니다.
@@ -65,6 +81,116 @@ private extension StoredPropertyInitMacro {
 
         return .requiresFinalClass
     }
+
+    /// 선언 내부의 저장 프로퍼티를 소스 순서대로 수집합니다.
+    ///
+    /// 지원하지 않는 형태의 프로퍼티는 note를 남기고 제외합니다.
+    ///
+    /// - Parameters:
+    ///   - declaration: 매크로가 적용된 선언입니다.
+    ///   - context: 진단을 보고할 확장 컨텍스트입니다.
+    /// - Returns: 이후 initializer 생성에 사용할 저장 프로퍼티 목록입니다.
+    static func collectStoredProperties(
+        from declaration: some DeclGroupSyntax,
+        in context: some MacroExpansionContext
+    ) -> [StoredProperty] {
+        declaration.memberBlock.members.compactMap { member in
+            guard let variableDeclaration = member.decl.as(VariableDeclSyntax.self) else {
+                return nil
+            }
+
+            return makeStoredProperty(from: variableDeclaration, in: context)
+        }
+    }
+
+    /// 단일 `VariableDeclSyntax`에서 저장 프로퍼티 하나를 추출합니다.
+    ///
+    /// 지원하지 않는 선언은 note를 보고하고 `nil`을 반환합니다.
+    ///
+    /// - Parameters:
+    ///   - variableDeclaration: 분석할 프로퍼티 선언입니다.
+    ///   - context: 진단을 보고할 확장 컨텍스트입니다.
+    /// - Returns: 추출된 저장 프로퍼티 정보입니다.
+    static func makeStoredProperty(
+        from variableDeclaration: VariableDeclSyntax,
+        in context: some MacroExpansionContext
+    ) -> StoredProperty? {
+        guard variableDeclaration.bindings.count == 1 else {
+            diagnoseSkippedStoredProperty(variableDeclaration, in: context)
+            return nil
+        }
+
+        guard !variableDeclaration.modifiers.contains(where: \.isStaticModifier) else {
+            diagnoseSkippedStoredProperty(variableDeclaration, in: context)
+            return nil
+        }
+
+        guard !variableDeclaration.modifiers.contains(where: \.isLazyModifier) else {
+            diagnoseSkippedStoredProperty(variableDeclaration, in: context)
+            return nil
+        }
+
+        guard !variableDeclaration.attributes.containsPropertyWrapperAttribute else {
+            diagnoseSkippedPropertyWrapper(variableDeclaration, in: context)
+            return nil
+        }
+
+        guard let binding = variableDeclaration.bindings.first else {
+            diagnoseSkippedStoredProperty(variableDeclaration, in: context)
+            return nil
+        }
+
+        guard !binding.isComputedProperty else {
+            diagnoseSkippedStoredProperty(variableDeclaration, in: context)
+            return nil
+        }
+
+        guard let identifierPattern = binding.pattern.as(IdentifierPatternSyntax.self) else {
+            diagnoseSkippedStoredProperty(variableDeclaration, in: context)
+            return nil
+        }
+
+        return StoredProperty(
+            propertyName: identifierPattern.identifier,
+            typeSyntax: binding.typeAnnotation?.type,
+            initializerClauseSyntax: binding.initializer,
+            isStoredAsLet: variableDeclaration.bindingSpecifier.tokenKind == .keyword(.let)
+        )
+    }
+
+    /// 지원하지 않는 저장 프로퍼티 형태를 note로 보고합니다.
+    ///
+    /// - Parameters:
+    ///   - variableDeclaration: 제외할 프로퍼티 선언입니다.
+    ///   - context: 진단을 보고할 확장 컨텍스트입니다.
+    static func diagnoseSkippedStoredProperty(
+        _ variableDeclaration: VariableDeclSyntax,
+        in context: some MacroExpansionContext
+    ) {
+        let propertyName = variableDeclaration.storedPropertyName
+        let diagnosticMessage = StoredPropertyInitDiagnosticMessage.skippedStoredProperty(
+            name: propertyName
+        )
+
+        context.diagnose(Diagnostic(node: Syntax(variableDeclaration), message: diagnosticMessage))
+    }
+
+    /// 프로퍼티 래퍼 사용 프로퍼티 제외를 note로 보고합니다.
+    ///
+    /// - Parameters:
+    ///   - variableDeclaration: 제외할 프로퍼티 선언입니다.
+    ///   - context: 진단을 보고할 확장 컨텍스트입니다.
+    static func diagnoseSkippedPropertyWrapper(
+        _ variableDeclaration: VariableDeclSyntax,
+        in context: some MacroExpansionContext
+    ) {
+        let propertyName = variableDeclaration.storedPropertyName ?? "<unknown>"
+        let diagnosticMessage = StoredPropertyInitDiagnosticMessage.skippedPropertyWrapper(
+            name: propertyName
+        )
+
+        context.diagnose(Diagnostic(node: Syntax(variableDeclaration), message: diagnosticMessage))
+    }
 }
 
 private extension DeclModifierSyntax {
@@ -74,6 +200,64 @@ private extension DeclModifierSyntax {
     /// 판별할 때 사용합니다.
     var isFinalModifier: Bool {
         name.tokenKind == .keyword(.final)
+    }
+
+    /// 현재 modifier가 `static`인지 나타냅니다.
+    var isStaticModifier: Bool {
+        name.tokenKind == .keyword(.static)
+    }
+
+    /// 현재 modifier가 `lazy`인지 나타냅니다.
+    var isLazyModifier: Bool {
+        name.tokenKind == .keyword(.lazy)
+    }
+}
+
+private extension AttributeListSyntax {
+    /// 프로퍼티 래퍼로 취급할 attribute가 포함되어 있는지 나타냅니다.
+    ///
+    /// 현재 단계에서는 선언에 붙은 attribute가 있으면
+    /// property-wrapper 사용 프로퍼티로 간주합니다.
+    var containsPropertyWrapperAttribute: Bool {
+        contains { element in
+            element.as(AttributeSyntax.self) != nil
+        }
+    }
+}
+
+private extension PatternBindingSyntax {
+    /// 현재 binding이 computed property인지 나타냅니다.
+    ///
+    /// `willSet` / `didSet`만 있는 observed stored property는 제외하지 않습니다.
+    var isComputedProperty: Bool {
+        guard let accessorBlock else {
+            return false
+        }
+
+        switch accessorBlock.accessors {
+        case .getter:
+            return true
+        case let .accessors(accessors):
+            return accessors.contains { accessor in
+                switch accessor.accessorSpecifier.tokenKind {
+                case .keyword(.get), .keyword(.set), .keyword(._read), .keyword(._modify):
+                    return true
+                default:
+                    return false
+                }
+            }
+        }
+    }
+}
+
+private extension VariableDeclSyntax {
+    /// note 메시지에 사용할 저장 프로퍼티 이름입니다.
+    var storedPropertyName: String? {
+        guard bindings.count == 1 else {
+            return nil
+        }
+
+        return bindings.first?.pattern.as(IdentifierPatternSyntax.self)?.identifier.text
     }
 }
 

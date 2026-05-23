@@ -1,16 +1,35 @@
 import SwiftDiagnostics
 
 /// `@StoredPropertyInit` 매크로가 사용하는 진단 메시지 목록입니다.
-enum StoredPropertyInitDiagnosticMessage: String, DiagnosticMessage {
+enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// `class` 선언에는 `final`이 필요하다는 에러입니다.
-    case requiresFinalClass = "@StoredPropertyInit requires classes to be final."
+    case requiresFinalClass
 
     /// 지원하지 않는 선언 종류에 적용되었음을 나타내는 에러입니다.
-    case unsupportedDeclaration = "@StoredPropertyInit can only be applied to a struct, final class, or actor."
+    case unsupportedDeclaration
+
+    /// 프로퍼티 래퍼 사용 프로퍼티를 건너뛴다는 note입니다.
+    case skippedPropertyWrapper(name: String)
+
+    /// 지원하지 않는 저장 프로퍼티 형태를 건너뛴다는 note입니다.
+    case skippedStoredProperty(name: String?)
 
     /// 사용자에게 표시할 진단 메시지 본문입니다.
     var message: String {
-        rawValue
+        switch self {
+        case .requiresFinalClass:
+            return "@StoredPropertyInit requires classes to be final."
+        case .unsupportedDeclaration:
+            return "@StoredPropertyInit can only be applied to a struct, final class, or actor."
+        case let .skippedPropertyWrapper(name):
+            return "StoredPropertyInit skipped property wrapper property '\(name)'."
+        case let .skippedStoredProperty(name):
+            guard let name else {
+                return "StoredPropertyInit skipped a computed, static, lazy, or multi-binding property."
+            }
+
+            return "StoredPropertyInit skipped computed, static, lazy, or multi-binding property '\(name)'."
+        }
     }
 
     /// 진단 메시지의 고유 식별자입니다.
@@ -20,6 +39,11 @@ enum StoredPropertyInitDiagnosticMessage: String, DiagnosticMessage {
 
     /// 현재 매크로 진단은 모두 에러로 처리합니다.
     var severity: DiagnosticSeverity {
-        .error
+        switch self {
+        case .requiresFinalClass, .unsupportedDeclaration:
+            .error
+        case .skippedPropertyWrapper, .skippedStoredProperty:
+            .note
+        }
     }
 }
