@@ -34,10 +34,24 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
 
     /// 진단 메시지의 고유 식별자입니다.
     var diagnosticID: MessageID {
-        MessageID(domain: "StoredPropertyInitMacro", id: "\(self)")
+        MessageID(domain: "StoredPropertyInitMacro", id: id)
     }
 
-    /// 현재 매크로 진단은 모두 에러로 처리합니다.
+    /// 진단 메시지의 고정 식별자입니다.
+    var id: String {
+        switch self {
+        case .requiresFinalClass:
+            "requiresFinalClass"
+        case .unsupportedDeclaration:
+            "unsupportedDeclaration"
+        case .skippedPropertyWrapper:
+            "skippedPropertyWrapper"
+        case .skippedStoredProperty:
+            "skippedStoredProperty"
+        }
+    }
+
+    /// 진단의 심각도입니다.
     var severity: DiagnosticSeverity {
         switch self {
         case .requiresFinalClass, .unsupportedDeclaration:
