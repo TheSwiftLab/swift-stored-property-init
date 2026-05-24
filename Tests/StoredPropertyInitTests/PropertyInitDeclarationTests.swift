@@ -91,11 +91,4 @@ final class PropertyInitDeclarationTests: XCTestCase {
         )
     }
 }
-
-/// 매크로 expansion 테스트에서 사용할 매크로 이름 매핑을 생성합니다.
-private func makeTestMacros() -> [String: Macro.Type] {
-    [
-        "StoredPropertyInit": StoredPropertyInitMacro.self
-    ]
-}
 #endif
