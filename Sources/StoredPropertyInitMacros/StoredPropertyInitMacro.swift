@@ -1,24 +1,25 @@
 import SwiftCompilerPlugin
 import SwiftDiagnostics
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 /// `@StoredPropertyInit`의 매크로 구현입니다.
 ///
-/// 현재 구현 범위는 매크로 적용 대상 검증과 initializer 파라미터 후보가 될
-/// 저장 프로퍼티 수집입니다.
+/// 현재 구현 범위는 매크로 적용 대상 검증, initializer 파라미터 후보가 될
+/// 저장 프로퍼티 수집, 그리고 `mode: .storedProperties`의 파라미터 선택입니다.
 public struct StoredPropertyInitMacro: MemberMacro {
     /// 매크로가 선언에 제공할 멤버를 확장합니다.
     ///
-    /// 현재 단계에서는 initializer를 실제로 생성하지 않으므로 항상 빈 배열을 반환합니다.
-    /// 대신 선언 대상과 저장 프로퍼티 수집 규칙을 검사하고, 필요하면 진단을 추가합니다.
+    /// 지원 선언에서 `mode: .storedProperties` 규칙에 따라 선택된 프로퍼티가 있으면
+    /// initializer를 생성합니다. 지원하지 않는 선언이나 프로퍼티는 진단을 보고합니다.
     ///
     /// - Parameters:
     ///   - node: 선언에 붙은 매크로 attribute 구문입니다.
     ///   - declaration: 매크로가 적용된 원본 선언입니다.
     ///   - protocols: 확장 과정에서 함께 고려할 프로토콜 목록입니다.
     ///   - context: 진단 보고와 코드 생성을 수행하는 매크로 확장 컨텍스트입니다.
-    /// - Returns: 선언에 추가할 멤버 목록입니다. 현재 구현에서는 항상 빈 배열입니다.
+    /// - Returns: 선언에 추가할 initializer 멤버 목록입니다.
     public static func expansion(
         of node: AttributeSyntax,
         providingMembersOf declaration: some DeclGroupSyntax,
@@ -26,8 +27,27 @@ public struct StoredPropertyInitMacro: MemberMacro {
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         if isSupportedDeclaration(declaration) {
-            _ = collectStoredProperties(from: declaration, in: context)
-            return []
+            let configuration = MacroConfiguration(from: node)
+            let storedProperties = collectStoredProperties(from: declaration, in: context)
+            let selectedProperties = selectStoredProperties(
+                storedProperties,
+                configuration: configuration
+            )
+
+            guard !selectedProperties.isEmpty else {
+                return []
+            }
+
+            guard validateSelectedStoredProperties(selectedProperties, in: context) else {
+                return []
+            }
+
+            return [
+                renderInitializer(
+                    from: selectedProperties,
+                    configuration: configuration
+                )
+            ]
         }
 
         let diagnosticMessage = diagnosticMessage(for: declaration)
@@ -54,6 +74,139 @@ private extension StoredPropertyInitMacro {
 
         /// `@WrappedInit(type:)`에 전달된 wrapper 타입 표현식입니다.
         let wrappedInitTypeExpression: ExprSyntax?
+
+        /// `@WrappedInit(type:)`로 포함된 property-wrapper 프로퍼티인지 나타냅니다.
+        var isWrappedInitProperty: Bool {
+            wrappedInitTypeExpression != nil
+        }
+    }
+
+    /// `@StoredPropertyInit` attribute 인자로부터 읽은 설정입니다.
+    struct MacroConfiguration {
+        var access: InitAccess = .internal
+        var mode: InitMode = .storedProperties
+        var defaults: InitDefaults = .omitted
+        var firstLabel: InitFirstLabel = .named
+
+        init(from attribute: AttributeSyntax) {
+            guard case let .argumentList(arguments) = attribute.arguments else {
+                return
+            }
+
+            for argument in arguments {
+                let optionName = argument.expression.optionName
+
+                switch argument.label?.text {
+                case nil:
+                    access = InitAccess(optionName: optionName) ?? access
+                case "mode":
+                    mode = InitMode(optionName: optionName) ?? mode
+                case "defaults":
+                    defaults = InitDefaults(optionName: optionName) ?? defaults
+                case "firstLabel":
+                    firstLabel = InitFirstLabel(optionName: optionName) ?? firstLabel
+                default:
+                    continue
+                }
+            }
+        }
+    }
+
+    /// initializer 접근 제어 설정입니다.
+    enum InitAccess {
+        case `private`
+        case `fileprivate`
+        case `internal`
+        case `package`
+        case `public`
+        case `open`
+
+        init?(optionName: String) {
+            switch optionName {
+            case "private":
+                self = .private
+            case "fileprivate":
+                self = .fileprivate
+            case "internal":
+                self = .internal
+            case "package":
+                self = .package
+            case "public":
+                self = .public
+            case "open":
+                self = .open
+            default:
+                return nil
+            }
+        }
+
+        var sourcePrefix: String {
+            switch self {
+            case .private:
+                return "private "
+            case .fileprivate:
+                return "fileprivate "
+            case .internal:
+                return ""
+            case .package:
+                return "package "
+            case .public:
+                return "public "
+            case .open:
+                return "open "
+            }
+        }
+    }
+
+    /// initializer 생성 모드입니다.
+    enum InitMode {
+        case storedProperties
+        case dependencies
+
+        init?(optionName: String) {
+            switch optionName {
+            case "storedProperties":
+                self = .storedProperties
+            case "dependencies":
+                self = .dependencies
+            default:
+                return nil
+            }
+        }
+    }
+
+    /// 기본값이 있는 프로퍼티 처리 정책입니다.
+    enum InitDefaults {
+        case omitted
+        case parameters
+
+        init?(optionName: String) {
+            switch optionName {
+            case "omitted":
+                self = .omitted
+            case "parameters":
+                self = .parameters
+            default:
+                return nil
+            }
+        }
+    }
+
+    /// 첫 번째 파라미터 외부 레이블 정책입니다.
+    enum InitFirstLabel {
+        case named
+        case omitted
+
+        init?(optionName: String) {
+            switch optionName {
+            case "named":
+                self = .named
+            case "omitted":
+                self = .omitted
+            default:
+                return nil
+            }
+        }
     }
 
     /// 주어진 선언이 `@StoredPropertyInit`의 지원 대상인지 판별합니다.
@@ -105,6 +258,143 @@ private extension StoredPropertyInitMacro {
 
             return makeStoredProperty(from: variableDeclaration, in: context)
         }
+    }
+
+    /// `mode`와 `defaults` 설정에 따라 initializer 파라미터가 될 프로퍼티를 선택합니다.
+    ///
+    /// 이번 단계에서는 `mode: .storedProperties` 규칙만 구현합니다.
+    ///
+    /// - Parameters:
+    ///   - storedProperties: 수집된 저장 프로퍼티 목록입니다.
+    ///   - configuration: 매크로 attribute 설정입니다.
+    /// - Returns: initializer 파라미터로 렌더링할 프로퍼티 목록입니다.
+    static func selectStoredProperties(
+        _ storedProperties: [StoredProperty],
+        configuration: MacroConfiguration
+    ) -> [StoredProperty] {
+        guard configuration.mode == .storedProperties else {
+            return []
+        }
+
+        return storedProperties.filter { property in
+            guard !property.isWrappedInitProperty else {
+                return true
+            }
+
+            guard property.initializerClauseSyntax != nil else {
+                return true
+            }
+
+            return configuration.defaults == .parameters
+        }
+    }
+
+    /// 선택된 프로퍼티들이 initializer 파라미터로 렌더링 가능한지 검증합니다.
+    ///
+    /// - Parameters:
+    ///   - storedProperties: initializer 파라미터로 선택된 프로퍼티 목록입니다.
+    ///   - context: 진단을 보고할 확장 컨텍스트입니다.
+    /// - Returns: 모든 프로퍼티가 렌더링 가능하면 `true`, 아니면 `false`입니다.
+    static func validateSelectedStoredProperties(
+        _ storedProperties: [StoredProperty],
+        in context: some MacroExpansionContext
+    ) -> Bool {
+        var isValid = true
+
+        for property in storedProperties where !property.isWrappedInitProperty && property.typeSyntax == nil {
+            let diagnosticMessage = StoredPropertyInitDiagnosticMessage.requiresExplicitTypeAnnotation
+            context.diagnose(Diagnostic(node: Syntax(property.name), message: diagnosticMessage))
+            isValid = false
+        }
+
+        return isValid
+    }
+
+    /// 선택된 저장 프로퍼티 목록을 initializer 선언으로 렌더링합니다.
+    ///
+    /// - Parameters:
+    ///   - storedProperties: initializer 파라미터와 body assignment로 사용할 프로퍼티 목록입니다.
+    ///   - configuration: 매크로 attribute 설정입니다.
+    /// - Returns: 생성된 initializer 선언입니다.
+    static func renderInitializer(
+        from storedProperties: [StoredProperty],
+        configuration: MacroConfiguration
+    ) -> DeclSyntax {
+        let parameters = storedProperties.enumerated()
+            .map { index, property in
+                renderParameter(
+                    for: property,
+                    at: index,
+                    configuration: configuration
+                )
+            }
+            .joined(separator: ", ")
+
+        let assignments = storedProperties
+            .map(renderAssignment)
+            .map { "    \($0)" }
+            .joined(separator: "\n")
+
+        return DeclSyntax(
+            stringLiteral: """
+            \(configuration.access.sourcePrefix)init(\(parameters)) {
+            \(assignments)
+            }
+            """
+        )
+    }
+
+    /// 저장 프로퍼티 하나를 initializer 파라미터 문자열로 렌더링합니다.
+    static func renderParameter(
+        for property: StoredProperty,
+        at index: Int,
+        configuration: MacroConfiguration
+    ) -> String {
+        let name = property.name.text
+        let labelPrefix = index == 0 && configuration.firstLabel == .omitted ? "_ " : ""
+        let type = parameterTypeSource(for: property)
+        let defaultArgument = defaultArgumentSource(
+            for: property,
+            configuration: configuration
+        )
+
+        return "\(labelPrefix)\(name): \(type)\(defaultArgument)"
+    }
+
+    /// 저장 프로퍼티 하나의 initializer 파라미터 타입 문자열을 반환합니다.
+    static func parameterTypeSource(for property: StoredProperty) -> String {
+        if let wrappedInitTypeExpression = property.wrappedInitTypeExpression {
+            return wrappedInitTypeExpression.typeExpressionSource
+        }
+
+        return property.typeSyntax?.trimmedDescription ?? ""
+    }
+
+    /// 저장 프로퍼티 기본값을 initializer 기본 인자 문자열로 렌더링합니다.
+    static func defaultArgumentSource(
+        for property: StoredProperty,
+        configuration: MacroConfiguration
+    ) -> String {
+        guard
+            configuration.defaults == .parameters,
+            !property.isWrappedInitProperty,
+            let initializerClauseSyntax = property.initializerClauseSyntax
+        else {
+            return ""
+        }
+
+        return " = \(initializerClauseSyntax.value.trimmedDescription)"
+    }
+
+    /// 저장 프로퍼티 하나를 initializer body assignment 문자열로 렌더링합니다.
+    static func renderAssignment(for property: StoredProperty) -> String {
+        let name = property.name.text
+
+        if property.isWrappedInitProperty {
+            return "self._\(name) = \(name)"
+        }
+
+        return "self.\(name) = \(name)"
     }
 
     /// 단일 `VariableDeclSyntax`에서 저장 프로퍼티 하나를 추출합니다.
@@ -289,6 +579,27 @@ private extension AttributeSyntax {
         return arguments.first { argument in
             argument.label?.text == "type"
         }?.expression
+    }
+}
+
+private extension ExprSyntax {
+    /// `.public`, `InitDefaults.parameters` 같은 옵션 표현식의 마지막 이름입니다.
+    var optionName: String {
+        trimmedDescription
+            .split(separator: ".")
+            .last
+            .map(String.init) ?? trimmedDescription
+    }
+
+    /// `@WrappedInit(type:)`의 `Wrapper.self` 표현식에서 타입 부분만 분리한 문자열입니다.
+    var typeExpressionSource: String {
+        let source = trimmedDescription
+
+        guard source.hasSuffix(".self") else {
+            return source
+        }
+
+        return String(source.dropLast(".self".count))
     }
 }
 
