@@ -20,6 +20,9 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// 생성자 파라미터로 선택된 프로퍼티에 타입 명시가 없다는 에러입니다.
     case requiresExplicitTypeAnnotation
 
+    /// Swift initializer에는 `open` 접근 제어자를 사용할 수 없다는 에러입니다.
+    case unsupportedOpenAccess
+
     /// 사용자에게 표시할 진단 메시지 본문입니다.
     var message: String {
         switch self {
@@ -39,6 +42,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             return "StoredPropertyInit skipped a property because its pattern is not a simple identifier."
         case .requiresExplicitTypeAnnotation:
             return "StoredPropertyInit requires an explicit type annotation for generated initializer parameters."
+        case .unsupportedOpenAccess:
+            return "StoredPropertyInit cannot generate an open initializer. Use public access instead."
         }
     }
 
@@ -62,13 +67,15 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             "skippedNonIdentifierPattern"
         case .requiresExplicitTypeAnnotation:
             "requiresExplicitTypeAnnotation"
+        case .unsupportedOpenAccess:
+            "unsupportedOpenAccess"
         }
     }
 
     /// 진단의 심각도입니다.
     var severity: DiagnosticSeverity {
         switch self {
-        case .requiresFinalClass, .unsupportedDeclaration, .requiresExplicitTypeAnnotation:
+        case .requiresFinalClass, .unsupportedDeclaration, .requiresExplicitTypeAnnotation, .unsupportedOpenAccess:
             .error
         case .skippedPropertyWrapper, .skippedStoredProperty, .skippedNonIdentifierPattern:
             .note

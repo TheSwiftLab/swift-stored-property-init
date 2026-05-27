@@ -90,5 +90,30 @@ final class PropertyInitDeclarationTests: XCTestCase {
             macros: makeTestMacros()
         )
     }
+
+    /// Swift initializer에는 `open` 접근 제어자를 사용할 수 없으므로 에러를 발생시킵니다.
+    func testStoredPropertyInitRejectsOpenAccess() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(.open)
+            struct User {
+                let id: String
+            }
+            """,
+            expandedSource: """
+            struct User {
+                let id: String
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit cannot generate an open initializer. Use public access instead.",
+                    line: 1,
+                    column: 1
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
 }
 #endif

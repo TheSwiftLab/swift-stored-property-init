@@ -28,6 +28,11 @@ public struct StoredPropertyInitMacro: MemberMacro {
     ) throws -> [DeclSyntax] {
         if isSupportedDeclaration(declaration) {
             let configuration = MacroConfiguration(from: node)
+
+            guard validateConfiguration(configuration, from: node, in: context) else {
+                return []
+            }
+
             let storedProperties = collectStoredProperties(from: declaration, in: context)
             let selectedProperties = selectStoredProperties(
                 storedProperties,
@@ -153,7 +158,7 @@ private extension StoredPropertyInitMacro {
             case .public:
                 return "public "
             case .open:
-                return "open "
+                return "public "
             }
         }
     }
@@ -237,6 +242,28 @@ private extension StoredPropertyInitMacro {
         }
 
         return .requiresFinalClass
+    }
+
+    /// 매크로 설정이 실제 initializer 생성에 사용할 수 있는 값인지 검증합니다.
+    ///
+    /// - Parameters:
+    ///   - configuration: 매크로 attribute 설정입니다.
+    ///   - attribute: 진단 위치로 사용할 매크로 attribute 구문입니다.
+    ///   - context: 진단을 보고할 확장 컨텍스트입니다.
+    /// - Returns: 설정이 유효하면 `true`, 아니면 `false`입니다.
+    static func validateConfiguration(
+        _ configuration: MacroConfiguration,
+        from attribute: AttributeSyntax,
+        in context: some MacroExpansionContext
+    ) -> Bool {
+        guard case .open = configuration.access else {
+            return true
+        }
+
+        let diagnosticMessage = StoredPropertyInitDiagnosticMessage.unsupportedOpenAccess
+        context.diagnose(Diagnostic(node: Syntax(attribute), message: diagnosticMessage))
+
+        return false
     }
 
     /// 선언 내부의 저장 프로퍼티를 소스 순서대로 수집합니다.
