@@ -304,6 +304,10 @@ private extension StoredPropertyInitMacro {
         }
 
         return storedProperties.filter { property in
+            if property.isStoredAsLet, property.initializerClauseSyntax != nil, !property.isWrappedInitProperty {
+                return false
+            }
+
             guard !property.isWrappedInitProperty else {
                 return true
             }

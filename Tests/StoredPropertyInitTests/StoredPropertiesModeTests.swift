@@ -113,6 +113,33 @@ final class StoredPropertiesModeTests: XCTestCase {
         )
     }
 
+    /// `let` 저장 프로퍼티가 선언부 기본값을 가지면 initializer에서 다시 대입할 수 없으므로 제외합니다.
+    func testStoredPropertiesModeParametersExcludesInitializedLetProperties() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(defaults: .parameters)
+            struct Draft {
+                let id: String = "draft"
+                var title: String
+                var isPinned: Bool = false
+            }
+            """,
+            expandedSource: """
+            struct Draft {
+                let id: String = "draft"
+                var title: String
+                var isPinned: Bool = false
+
+                init(title: String, isPinned: Bool = false) {
+                    self.title = title
+                    self.isPinned = isPinned
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
     /// `mode: .storedProperties`와 `defaults: .parameters`를 함께 명시하면 기본값을 기본 인자로 보존합니다.
     func testExplicitStoredPropertiesModeParametersIncludesInitializedPropertiesWithDefaultArguments() throws {
         assertMacroExpansion(
