@@ -59,6 +59,35 @@ final class StoredPropertiesModeTests: XCTestCase {
         )
     }
 
+    /// `mode: .storedProperties`와 `defaults: .omitted`를 함께 명시하면 기본값이 있는 프로퍼티를 제외합니다.
+    func testExplicitStoredPropertiesModeOmittedExcludesInitializedProperties() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .storedProperties, defaults: .omitted)
+            struct Article {
+                let id: String
+                var title: String
+                var isPinned: Bool = false
+                var commentCount: Int = 0
+            }
+            """,
+            expandedSource: """
+            struct Article {
+                let id: String
+                var title: String
+                var isPinned: Bool = false
+                var commentCount: Int = 0
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
     /// `defaults: .parameters`에서는 초기값이 있는 저장 프로퍼티를 기본 인자와 함께 포함합니다.
     func testStoredPropertiesModeParametersIncludesInitializedPropertiesWithDefaultArguments() throws {
         assertMacroExpansion(
@@ -77,6 +106,34 @@ final class StoredPropertiesModeTests: XCTestCase {
                 init(keyword: String? = nil, pageSize: Int = 20) {
                     self.keyword = keyword
                     self.pageSize = pageSize
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// `mode: .storedProperties`와 `defaults: .parameters`를 함께 명시하면 기본값을 기본 인자로 보존합니다.
+    func testExplicitStoredPropertiesModeParametersIncludesInitializedPropertiesWithDefaultArguments() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .storedProperties, defaults: .parameters)
+            struct SearchOptions {
+                var query: String
+                var page: Int = 1
+                var includeArchived: Bool = false
+            }
+            """,
+            expandedSource: """
+            struct SearchOptions {
+                var query: String
+                var page: Int = 1
+                var includeArchived: Bool = false
+
+                init(query: String, page: Int = 1, includeArchived: Bool = false) {
+                    self.query = query
+                    self.page = page
+                    self.includeArchived = includeArchived
                 }
             }
             """,
