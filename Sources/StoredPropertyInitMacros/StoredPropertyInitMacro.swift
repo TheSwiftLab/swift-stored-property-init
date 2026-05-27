@@ -47,6 +47,14 @@ public struct StoredPropertyInitMacro: MemberMacro {
                 return []
             }
 
+            guard !hasMatchingInitializer(
+                for: selectedProperties,
+                configuration: configuration,
+                in: declaration
+            ) else {
+                return []
+            }
+
             return [
                 renderInitializer(
                     from: selectedProperties,
@@ -84,6 +92,12 @@ private extension StoredPropertyInitMacro {
         var isWrappedInitProperty: Bool {
             wrappedInitTypeExpression != nil
         }
+    }
+
+    /// initializer 중복 여부를 비교할 때 사용하는 파라미터 시그니처입니다.
+    struct InitializerParameterSignature: Equatable {
+        let externalLabel: String
+        let typeSource: String
     }
 
     /// `@StoredPropertyInit` attribute 인자로부터 읽은 설정입니다.
@@ -339,6 +353,55 @@ private extension StoredPropertyInitMacro {
         }
 
         return isValid
+    }
+
+    /// 같은 파라미터 레이블과 타입을 가진 initializer가 이미 선언되어 있는지 확인합니다.
+    static func hasMatchingInitializer(
+        for storedProperties: [StoredProperty],
+        configuration: MacroConfiguration,
+        in declaration: some DeclGroupSyntax
+    ) -> Bool {
+        let generatedSignature = generatedInitializerSignature(
+            for: storedProperties,
+            configuration: configuration
+        )
+
+        return declaration.memberBlock.members.contains { member in
+            guard let initializer = member.decl.as(InitializerDeclSyntax.self) else {
+                return false
+            }
+
+            return initializerSignature(from: initializer) == generatedSignature
+        }
+    }
+
+    /// 기존 initializer 선언의 파라미터 시그니처를 반환합니다.
+    static func initializerSignature(
+        from initializer: InitializerDeclSyntax
+    ) -> [InitializerParameterSignature] {
+        initializer.signature.parameterClause.parameters.map { parameter in
+            InitializerParameterSignature(
+                externalLabel: parameter.firstName.text,
+                typeSource: parameter.type.trimmedDescription
+            )
+        }
+    }
+
+    /// 생성할 initializer의 파라미터 시그니처를 반환합니다.
+    static func generatedInitializerSignature(
+        for storedProperties: [StoredProperty],
+        configuration: MacroConfiguration
+    ) -> [InitializerParameterSignature] {
+        storedProperties.enumerated().map { index, property in
+            let externalLabel = index == 0 && configuration.firstLabel == .omitted
+                ? "_"
+                : property.name.text
+
+            return InitializerParameterSignature(
+                externalLabel: externalLabel,
+                typeSource: parameterTypeSource(for: property)
+            )
+        }
     }
 
     /// 선택된 저장 프로퍼티 목록을 initializer 선언으로 렌더링합니다.

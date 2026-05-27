@@ -168,6 +168,62 @@ final class StoredPropertiesModeTests: XCTestCase {
         )
     }
 
+    /// 같은 파라미터 레이블과 타입을 가진 initializer가 이미 있으면 중복 생성하지 않습니다.
+    func testStoredPropertiesModeSkipsInitializerWhenMatchingInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+                var title: String
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+                var title: String
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 첫 번째 파라미터 레이블 생략 설정도 기존 initializer 시그니처와 비교합니다.
+    func testStoredPropertiesModeSkipsInitializerWhenMatchingUnlabeledInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(firstLabel: .omitted)
+            struct Todo {
+                let id: String
+
+                init(_ id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init(_ id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
     /// 선택된 파라미터와 assignment는 원본 선언 순서를 유지합니다.
     func testStoredPropertiesModePreservesDeclarationOrder() throws {
         assertMacroExpansion(
