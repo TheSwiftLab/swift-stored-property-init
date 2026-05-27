@@ -22,6 +22,10 @@ final class StoredPropertyCollectionTests: XCTestCase {
                 var name: String {
                     didSet { }
                 }
+
+                init(name: String) {
+                    self.name = name
+                }
             }
             """,
             macros: makeTestMacros()
@@ -149,6 +153,10 @@ final class StoredPropertyCollectionTests: XCTestCase {
             expandedSource: """
             struct ToggleRow {
                 @Binding var isOn: Bool
+
+                init(isOn: Binding<Bool>) {
+                    self._isOn = isOn
+                }
             }
             """,
             macros: makeTestMacros()
