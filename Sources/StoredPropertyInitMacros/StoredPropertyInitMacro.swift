@@ -132,7 +132,7 @@ private extension StoredPropertyInitMacro {
     }
 
     /// initializer 접근 제어 설정입니다.
-    enum InitAccess {
+    enum InitAccess: String {
         case `private`
         case `fileprivate`
         case `internal`
@@ -141,90 +141,48 @@ private extension StoredPropertyInitMacro {
         case `open`
 
         init?(optionName: String) {
-            switch optionName {
-            case "private":
-                self = .private
-            case "fileprivate":
-                self = .fileprivate
-            case "internal":
-                self = .internal
-            case "package":
-                self = .package
-            case "public":
-                self = .public
-            case "open":
-                self = .open
-            default:
-                return nil
-            }
+            self.init(rawValue: optionName)
         }
 
         var sourcePrefix: String {
             switch self {
-            case .private:
-                return "private "
-            case .fileprivate:
-                return "fileprivate "
             case .internal:
                 return ""
-            case .package:
-                return "package "
-            case .public:
-                return "public "
             case .open:
                 return "public "
+            case .private, .fileprivate, .package, .public:
+                return "\(rawValue) "
             }
         }
     }
 
     /// initializer 생성 모드입니다.
-    enum InitMode {
+    enum InitMode: String {
         case storedProperties
         case dependencies
 
         init?(optionName: String) {
-            switch optionName {
-            case "storedProperties":
-                self = .storedProperties
-            case "dependencies":
-                self = .dependencies
-            default:
-                return nil
-            }
+            self.init(rawValue: optionName)
         }
     }
 
     /// 기본값이 있는 프로퍼티 처리 정책입니다.
-    enum InitDefaults {
+    enum InitDefaults: String {
         case omitted
         case parameters
 
         init?(optionName: String) {
-            switch optionName {
-            case "omitted":
-                self = .omitted
-            case "parameters":
-                self = .parameters
-            default:
-                return nil
-            }
+            self.init(rawValue: optionName)
         }
     }
 
     /// 첫 번째 파라미터 외부 레이블 정책입니다.
-    enum InitFirstLabel {
+    enum InitFirstLabel: String {
         case named
         case omitted
 
         init?(optionName: String) {
-            switch optionName {
-            case "named":
-                self = .named
-            case "omitted":
-                self = .omitted
-            default:
-                return nil
-            }
+            self.init(rawValue: optionName)
         }
     }
 
