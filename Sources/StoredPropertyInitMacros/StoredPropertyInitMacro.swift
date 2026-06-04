@@ -11,8 +11,8 @@ import SwiftSyntaxMacros
 public struct StoredPropertyInitMacro: MemberMacro {
     /// 매크로가 선언에 제공할 멤버를 확장합니다.
     ///
-    /// 지원 선언에서 `mode: .storedProperties` 규칙에 따라 선택된 프로퍼티가 있으면
-    /// initializer를 생성합니다. 지원하지 않는 선언이나 프로퍼티는 진단을 보고합니다.
+    /// 지원 선언에서 `mode: .storedProperties` 규칙에 따라 initializer 파라미터
+    /// 후보가 있으면 initializer를 생성합니다. 지원하지 않는 선언이나 프로퍼티는 진단을 보고합니다.
     ///
     /// - Parameters:
     ///   - node: 선언에 붙은 매크로 attribute 구문입니다.
@@ -39,7 +39,10 @@ public struct StoredPropertyInitMacro: MemberMacro {
                 configuration: configuration
             )
 
-            guard !selectedProperties.isEmpty else {
+            let shouldGenerateInitializer = !selectedProperties.isEmpty
+                || (configuration.mode == .storedProperties && !storedProperties.isEmpty)
+
+            guard shouldGenerateInitializer else {
                 return []
             }
 
@@ -377,6 +380,15 @@ private extension StoredPropertyInitMacro {
         from storedProperties: [StoredProperty],
         configuration: MacroConfiguration
     ) -> DeclSyntax {
+        guard !storedProperties.isEmpty else {
+            return DeclSyntax(
+                stringLiteral: """
+                \(configuration.access.sourcePrefix)init() {
+                }
+                """
+            )
+        }
+
         let parameters = storedProperties.enumerated()
             .map { index, property in
                 renderParameter(
