@@ -5,6 +5,9 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// `class` 선언에는 `final`이 필요하다는 에러입니다.
     case requiresFinalClass
 
+    /// inheritance clause가 있는 `final class`는 지원하지 않는다는 에러입니다.
+    case unsupportedClassInheritanceClause
+
     /// 지원하지 않는 선언 종류에 적용되었음을 나타내는 에러입니다.
     case unsupportedDeclaration
 
@@ -28,6 +31,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
         switch self {
         case .requiresFinalClass:
             return "@StoredPropertyInit requires classes to be final."
+        case .unsupportedClassInheritanceClause:
+            return "@StoredPropertyInit does not support final classes with inheritance clauses."
         case .unsupportedDeclaration:
             return "@StoredPropertyInit can only be applied to a struct, final class, or actor."
         case let .skippedPropertyWrapper(name):
@@ -57,6 +62,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
         switch self {
         case .requiresFinalClass:
             "requiresFinalClass"
+        case .unsupportedClassInheritanceClause:
+            "unsupportedClassInheritanceClause"
         case .unsupportedDeclaration:
             "unsupportedDeclaration"
         case .skippedPropertyWrapper:
@@ -75,7 +82,12 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// 진단의 심각도입니다.
     var severity: DiagnosticSeverity {
         switch self {
-        case .requiresFinalClass, .unsupportedDeclaration, .requiresExplicitTypeAnnotation, .unsupportedOpenAccess:
+        case
+            .requiresFinalClass,
+            .unsupportedClassInheritanceClause,
+            .unsupportedDeclaration,
+            .requiresExplicitTypeAnnotation,
+            .unsupportedOpenAccess:
             .error
         case .skippedPropertyWrapper, .skippedStoredProperty, .skippedNonIdentifierPattern:
             .note

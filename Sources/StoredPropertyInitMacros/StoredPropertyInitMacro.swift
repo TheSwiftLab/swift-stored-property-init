@@ -189,7 +189,7 @@ private extension StoredPropertyInitMacro {
     /// 주어진 선언이 `@StoredPropertyInit`의 지원 대상인지 판별합니다.
     ///
     /// - Parameter declaration: 매크로가 적용된 선언입니다.
-    /// - Returns: `struct`, `final class`, `actor`면 `true`, 아니면 `false`입니다.
+    /// - Returns: `struct`, inheritance clause가 없는 `final class`, `actor`면 `true`, 아니면 `false`입니다.
     static func isSupportedDeclaration(_ declaration: some DeclGroupSyntax) -> Bool {
         if declaration.is(StructDeclSyntax.self) || declaration.is(ActorDeclSyntax.self) {
             return true
@@ -200,6 +200,7 @@ private extension StoredPropertyInitMacro {
         }
 
         return classDeclaration.modifiers.contains(where: \.isFinalModifier)
+            && classDeclaration.inheritanceClause == nil
     }
 
     /// 지원되지 않는 선언에 대해 표시할 진단 메시지를 선택합니다.
@@ -209,11 +210,15 @@ private extension StoredPropertyInitMacro {
     static func diagnosticMessage(
         for declaration: some DeclGroupSyntax
     ) -> StoredPropertyInitDiagnosticMessage {
-        guard declaration.is(ClassDeclSyntax.self) else {
+        guard let classDeclaration = declaration.as(ClassDeclSyntax.self) else {
             return .unsupportedDeclaration
         }
 
-        return .requiresFinalClass
+        guard classDeclaration.modifiers.contains(where: \.isFinalModifier) else {
+            return .requiresFinalClass
+        }
+
+        return .unsupportedClassInheritanceClause
     }
 
     /// 매크로 설정이 실제 initializer 생성에 사용할 수 있는 값인지 검증합니다.
