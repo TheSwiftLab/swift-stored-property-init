@@ -26,6 +26,31 @@ final class StoredPropertiesEmptyInitializerTests: XCTestCase {
         )
     }
 
+    /// `defaults: .parameters`에서 initialized `let` 때문에 선택된 파라미터가 없으면 empty initializer를 생성하지 않습니다.
+    func testStoredPropertiesModeParametersDoesNotGenerateEmptyInitializerForInitializedLetProperty() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(defaults: .parameters)
+            struct Draft {
+                let id: String = "draft"
+            }
+            """,
+            expandedSource: """
+            struct Draft {
+                let id: String = "draft"
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit cannot use initialized let property 'id' with defaults: .parameters.",
+                    line: 3,
+                    column: 9
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
     /// 같은 empty initializer가 이미 있으면 중복 생성하지 않습니다.
     func testStoredPropertiesModeSkipsEmptyInitializerWhenMatchingInitializerExists() throws {
         assertMacroExpansion(

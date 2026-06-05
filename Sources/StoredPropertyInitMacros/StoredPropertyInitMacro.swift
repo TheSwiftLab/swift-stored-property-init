@@ -34,6 +34,15 @@ public struct StoredPropertyInitMacro: MemberMacro {
             }
 
             let storedProperties = collectStoredProperties(from: declaration, in: context)
+
+            guard validateInitializedLetDefaultedParameters(
+                storedProperties,
+                configuration: configuration,
+                in: context
+            ) else {
+                return []
+            }
+
             let selectedProperties = selectStoredProperties(
                 storedProperties,
                 configuration: configuration
@@ -94,6 +103,11 @@ private extension StoredPropertyInitMacro {
         /// `@WrappedInit(type:)`로 포함된 property-wrapper 프로퍼티인지 나타냅니다.
         var isWrappedInitProperty: Bool {
             wrappedInitTypeExpression != nil
+        }
+
+        /// 선언부 기본값이 있는 non-wrapper `let` 저장 프로퍼티인지 나타냅니다.
+        var isInitializedNonWrapperLet: Bool {
+            isStoredAsLet && initializerClauseSyntax != nil && !isWrappedInitProperty
         }
     }
 
@@ -284,7 +298,7 @@ private extension StoredPropertyInitMacro {
         }
 
         return storedProperties.filter { property in
-            if property.isStoredAsLet, property.initializerClauseSyntax != nil, !property.isWrappedInitProperty {
+            if property.isInitializedNonWrapperLet {
                 return false
             }
 
@@ -298,6 +312,29 @@ private extension StoredPropertyInitMacro {
 
             return configuration.defaults == .parameters
         }
+    }
+
+    /// `defaults: .parameters` 계약상 포함해야 하지만 Swift가 대입을 허용하지 않는
+    /// initialized `let` 프로퍼티를 진단합니다.
+    static func validateInitializedLetDefaultedParameters(
+        _ storedProperties: [StoredProperty],
+        configuration: MacroConfiguration,
+        in context: some MacroExpansionContext
+    ) -> Bool {
+        guard configuration.mode == .storedProperties, configuration.defaults == .parameters else {
+            return true
+        }
+
+        var isValid = true
+
+        for property in storedProperties where property.isInitializedNonWrapperLet {
+            let diagnosticMessage = StoredPropertyInitDiagnosticMessage
+                .initializedLetDefaultedParameter(name: property.name.text)
+            context.diagnose(Diagnostic(node: Syntax(property.name), message: diagnosticMessage))
+            isValid = false
+        }
+
+        return isValid
     }
 
     /// 선택된 프로퍼티들이 initializer 파라미터로 렌더링 가능한지 검증합니다.

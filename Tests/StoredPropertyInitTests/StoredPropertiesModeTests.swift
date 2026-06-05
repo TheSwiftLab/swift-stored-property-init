@@ -113,8 +113,8 @@ final class StoredPropertiesModeTests: XCTestCase {
         )
     }
 
-    /// `let` 저장 프로퍼티가 선언부 기본값을 가지면 initializer에서 다시 대입할 수 없으므로 제외합니다.
-    func testStoredPropertiesModeParametersExcludesInitializedLetProperties() throws {
+    /// `defaults: .parameters`에서 선언부 기본값이 있는 `let`은 생성 계약을 만족할 수 없으므로 에러를 발생시킵니다.
+    func testStoredPropertiesModeParametersRejectsInitializedLetProperties() throws {
         assertMacroExpansion(
             """
             @StoredPropertyInit(defaults: .parameters)
@@ -129,13 +129,15 @@ final class StoredPropertiesModeTests: XCTestCase {
                 let id: String = "draft"
                 var title: String
                 var isPinned: Bool = false
-
-                init(title: String, isPinned: Bool = false) {
-                    self.title = title
-                    self.isPinned = isPinned
-                }
             }
             """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit cannot use initialized let property 'id' with defaults: .parameters.",
+                    line: 3,
+                    column: 9
+                )
+            ],
             macros: makeTestMacros()
         )
     }
