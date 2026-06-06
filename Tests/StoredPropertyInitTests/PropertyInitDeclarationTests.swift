@@ -70,6 +70,56 @@ final class PropertyInitDeclarationTests: XCTestCase {
         )
     }
 
+    /// inheritance clause가 있는 `final class`는 지원하지 않음을 검증합니다.
+    func testStoredPropertyInitRejectsFinalClassWithInheritanceClause() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            final class User: Base {
+                let id: String
+            }
+            """,
+            expandedSource: """
+            final class User: Base {
+                let id: String
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@StoredPropertyInit does not support final classes with inheritance clauses.",
+                    line: 1,
+                    column: 1
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// protocol conformance도 syntax상 inheritance clause이므로 현재 지원 범위에서는 제외합니다.
+    func testStoredPropertyInitRejectsFinalClassWithProtocolConformance() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            final class User: Sendable {
+                let id: String
+            }
+            """,
+            expandedSource: """
+            final class User: Sendable {
+                let id: String
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@StoredPropertyInit does not support final classes with inheritance clauses.",
+                    line: 1,
+                    column: 1
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
     /// 지원하지 않는 선언 종류에 매크로를 적용하면 에러가 발생함을 검증합니다.
     func testStoredPropertyInitRejectsUnsupportedDeclaration() throws {
         assertMacroExpansion(
@@ -83,6 +133,31 @@ final class PropertyInitDeclarationTests: XCTestCase {
             diagnostics: [
                 DiagnosticSpec(
                     message: "@StoredPropertyInit can only be applied to a struct, final class, or actor.",
+                    line: 1,
+                    column: 1
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// Swift initializer에는 `open` 접근 제어자를 사용할 수 없으므로 에러를 발생시킵니다.
+    func testStoredPropertyInitRejectsOpenAccess() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(.open)
+            struct User {
+                let id: String
+            }
+            """,
+            expandedSource: """
+            struct User {
+                let id: String
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit cannot generate an open initializer. Use public access instead.",
                     line: 1,
                     column: 1
                 )

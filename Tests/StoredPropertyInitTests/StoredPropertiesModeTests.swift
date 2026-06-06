@@ -1,0 +1,257 @@
+import XCTest
+
+#if canImport(StoredPropertyInitMacros)
+import SwiftSyntaxMacrosTestSupport
+
+/// `mode: .storedProperties`의 initializer 파라미터 선택 규칙을 검증하는 테스트입니다.
+final class StoredPropertiesModeTests: XCTestCase {
+    /// 기본 설정에서는 초기값이 없는 저장 프로퍼티만 initializer 파라미터에 포함합니다.
+    func testStoredPropertiesModeOmitsInitializedPropertiesByDefault() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+                var title: String
+                var tags: [String] = []
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+                var title: String
+                var tags: [String] = []
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// `defaults: .omitted`를 명시해도 초기값이 있는 저장 프로퍼티는 제외합니다.
+    func testStoredPropertiesModeOmittedExcludesInitializedProperties() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(defaults: .omitted)
+            struct Todo {
+                let id: String
+                var title: String
+                var tags: [String] = []
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+                var title: String
+                var tags: [String] = []
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// `mode: .storedProperties`와 `defaults: .omitted`를 함께 명시하면 기본값이 있는 프로퍼티를 제외합니다.
+    func testExplicitStoredPropertiesModeOmittedExcludesInitializedProperties() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .storedProperties, defaults: .omitted)
+            struct Article {
+                let id: String
+                var title: String
+                var isPinned: Bool = false
+                var commentCount: Int = 0
+            }
+            """,
+            expandedSource: """
+            struct Article {
+                let id: String
+                var title: String
+                var isPinned: Bool = false
+                var commentCount: Int = 0
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// `defaults: .parameters`에서는 초기값이 있는 저장 프로퍼티를 기본 인자와 함께 포함합니다.
+    func testStoredPropertiesModeParametersIncludesInitializedPropertiesWithDefaultArguments() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(defaults: .parameters)
+            struct TodoQuery {
+                var keyword: String? = nil
+                var pageSize: Int = 20
+            }
+            """,
+            expandedSource: """
+            struct TodoQuery {
+                var keyword: String? = nil
+                var pageSize: Int = 20
+
+                init(keyword: String? = nil, pageSize: Int = 20) {
+                    self.keyword = keyword
+                    self.pageSize = pageSize
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// `defaults: .parameters`에서 선언부 기본값이 있는 `let`은 생성 계약을 만족할 수 없으므로 에러를 발생시킵니다.
+    func testStoredPropertiesModeParametersRejectsInitializedLetProperties() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(defaults: .parameters)
+            struct Draft {
+                let id: String = "draft"
+                var title: String
+                var isPinned: Bool = false
+            }
+            """,
+            expandedSource: """
+            struct Draft {
+                let id: String = "draft"
+                var title: String
+                var isPinned: Bool = false
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit cannot use initialized let property 'id' with defaults: .parameters.",
+                    line: 3,
+                    column: 9
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// `mode: .storedProperties`와 `defaults: .parameters`를 함께 명시하면 기본값을 기본 인자로 보존합니다.
+    func testExplicitStoredPropertiesModeParametersIncludesInitializedPropertiesWithDefaultArguments() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .storedProperties, defaults: .parameters)
+            struct SearchOptions {
+                var query: String
+                var page: Int = 1
+                var includeArchived: Bool = false
+            }
+            """,
+            expandedSource: """
+            struct SearchOptions {
+                var query: String
+                var page: Int = 1
+                var includeArchived: Bool = false
+
+                init(query: String, page: Int = 1, includeArchived: Bool = false) {
+                    self.query = query
+                    self.page = page
+                    self.includeArchived = includeArchived
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 같은 파라미터 레이블과 타입을 가진 initializer가 이미 있으면 중복 생성하지 않습니다.
+    func testStoredPropertiesModeSkipsInitializerWhenMatchingInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+                var title: String
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+                var title: String
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 첫 번째 파라미터 레이블 생략 설정도 기존 initializer 시그니처와 비교합니다.
+    func testStoredPropertiesModeSkipsInitializerWhenMatchingUnlabeledInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(firstLabel: .omitted)
+            struct Todo {
+                let id: String
+
+                init(_ id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init(_ id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 선택된 파라미터와 assignment는 원본 선언 순서를 유지합니다.
+    func testStoredPropertiesModePreservesDeclarationOrder() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(defaults: .parameters)
+            struct Profile {
+                var name: String
+                var age: Int = 0
+                let id: String
+            }
+            """,
+            expandedSource: """
+            struct Profile {
+                var name: String
+                var age: Int = 0
+                let id: String
+
+                init(name: String, age: Int = 0, id: String) {
+                    self.name = name
+                    self.age = age
+                    self.id = id
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+}
+#endif
