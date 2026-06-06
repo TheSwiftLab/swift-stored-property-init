@@ -5,7 +5,7 @@
 ///
 /// 적용 가능한 선언:
 /// - `struct`
-/// - inheritance clause가 없는 `final class`
+/// - 부모 클래스나 프로토콜을 명시하지 않은 `final class`
 /// - `actor`
 ///
 /// 지원하지 않는 선언에 적용하면 매크로 진단을 발생시킵니다.

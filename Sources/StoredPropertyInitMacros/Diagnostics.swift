@@ -5,7 +5,7 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// `class` 선언에는 `final`이 필요하다는 에러입니다.
     case requiresFinalClass
 
-    /// inheritance clause가 있는 `final class`는 지원하지 않는다는 에러입니다.
+    /// 부모 클래스나 프로토콜을 명시하지 않은 `final class`는 지원하지 않는다는 에러입니다.
     case unsupportedClassInheritanceClause
 
     /// 지원하지 않는 선언 종류에 적용되었음을 나타내는 에러입니다.
