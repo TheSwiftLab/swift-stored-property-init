@@ -79,5 +79,50 @@ final class DependenciesModeTests: XCTestCase {
             macros: makeTestMacros()
         )
     }
+
+    /// `@WrappedInit(type:)`로 포함된 property-wrapper 프로퍼티도 의존성 모드에서는 제외합니다.
+    func testDependenciesModeExcludesWrappedInitProperties() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .dependencies)
+            struct ToggleFeature {
+                let repository: Repository
+                @WrappedInit(type: Binding<Bool>.self)
+                @Binding var isOn: Bool
+            }
+            """,
+            expandedSource: """
+            struct ToggleFeature {
+                let repository: Repository
+                @Binding var isOn: Bool
+
+                init(repository: Repository) {
+                    self.repository = repository
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 의존성 모드에서 선택할 `let` 프로퍼티가 없으면 initializer를 생성하지 않습니다.
+    func testDependenciesModeDoesNotGenerateInitializerWhenNoDependencyPropertiesExist() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .dependencies)
+            struct ViewState {
+                var title: String
+                let placeholder: String = ""
+            }
+            """,
+            expandedSource: """
+            struct ViewState {
+                var title: String
+                let placeholder: String = ""
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
 }
 #endif
