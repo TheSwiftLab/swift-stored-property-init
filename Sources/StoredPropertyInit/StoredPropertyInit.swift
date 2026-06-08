@@ -1,7 +1,7 @@
 /// 저장 프로퍼티 기반 initializer 생성을 위한 attached member macro입니다.
 ///
 /// 현재 단계에서는 선언 적용 가능 여부와 저장 프로퍼티 수집 규칙을 검증하고,
-/// `mode: .storedProperties`의 파라미터 선택 규칙에 따라 initializer를 생성합니다.
+/// 모드별 파라미터 선택 규칙에 따라 initializer를 생성합니다.
 ///
 /// 적용 가능한 선언:
 /// - `struct`
