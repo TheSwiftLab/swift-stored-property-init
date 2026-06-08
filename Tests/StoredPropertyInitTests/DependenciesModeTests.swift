@@ -124,5 +124,31 @@ final class DependenciesModeTests: XCTestCase {
             macros: makeTestMacros()
         )
     }
+
+    /// 같은 파라미터 레이블과 타입을 가진 initializer가 이미 있으면 중복 생성하지 않습니다.
+    func testDependenciesModeSkipsInitializerWhenMatchingInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .dependencies)
+            struct Feature {
+                let repository: Repository
+
+                init(repository: Repository) {
+                    self.repository = repository
+                }
+            }
+            """,
+            expandedSource: """
+            struct Feature {
+                let repository: Repository
+
+                init(repository: Repository) {
+                    self.repository = repository
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
 }
 #endif
