@@ -55,5 +55,29 @@ final class DependenciesModeTests: XCTestCase {
             macros: makeTestMacros()
         )
     }
+
+    /// `defaults: .parameters`를 명시해도 의존성 모드에서는 초기값이 있는 `let`을 제외합니다.
+    func testDependenciesModeParametersExcludesInitializedLetProperties() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .dependencies, defaults: .parameters)
+            struct Feature {
+                let repository: Repository
+                let logger: Logger = .live
+            }
+            """,
+            expandedSource: """
+            struct Feature {
+                let repository: Repository
+                let logger: Logger = .live
+
+                init(repository: Repository) {
+                    self.repository = repository
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
 }
 #endif
