@@ -29,5 +29,31 @@ final class DependenciesModeTests: XCTestCase {
             macros: makeTestMacros()
         )
     }
+
+    /// 의존성 모드에서는 모든 `var` 프로퍼티를 initializer 파라미터에서 제외합니다.
+    func testDependenciesModeExcludesVarProperties() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .dependencies)
+            struct Feature {
+                let repository: Repository
+                var cache: [String: Todo]
+                var isEnabled: Bool = true
+            }
+            """,
+            expandedSource: """
+            struct Feature {
+                let repository: Repository
+                var cache: [String: Todo]
+                var isEnabled: Bool = true
+
+                init(repository: Repository) {
+                    self.repository = repository
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
 }
 #endif
