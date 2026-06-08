@@ -13,7 +13,7 @@
 /// - Parameters:
 ///   - access: 생성될 initializer의 접근 수준입니다.
 ///   - mode: initializer 생성 모드입니다.
-///   - defaults: 기본값을 파라미터에 반영할지 지정합니다.
+///   - defaults: 기본값을 파라미터에 반영할지 지정합니다. `mode: .dependencies`에서는 초기값이 있는 프로퍼티를 제외합니다.
 ///   - firstLabel: 첫 번째 파라미터 레이블 정책입니다.
 @attached(member, names: named(init))
 public macro StoredPropertyInit(
