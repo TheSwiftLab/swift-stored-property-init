@@ -7,11 +7,11 @@ import SwiftSyntaxMacros
 /// `@StoredPropertyInit`의 매크로 구현입니다.
 ///
 /// 현재 구현 범위는 매크로 적용 대상 검증, initializer 파라미터 후보가 될
-/// 저장 프로퍼티 수집, 그리고 `mode: .storedProperties`의 파라미터 선택입니다.
+/// 저장 프로퍼티 수집, 그리고 모드별 파라미터 선택입니다.
 public struct StoredPropertyInitMacro: MemberMacro {
     /// 매크로가 선언에 제공할 멤버를 확장합니다.
     ///
-    /// 지원 선언에서 `mode: .storedProperties` 규칙에 따라 initializer 파라미터
+    /// 지원 선언에서 모드별 규칙에 따라 initializer 파라미터
     /// 후보가 있으면 initializer를 생성합니다. 지원하지 않는 선언이나 프로퍼티는 진단을 보고합니다.
     ///
     /// - Parameters:
@@ -49,9 +49,18 @@ public struct StoredPropertyInitMacro: MemberMacro {
             )
 
             let shouldGenerateInitializer = !selectedProperties.isEmpty
-                || (configuration.mode == .storedProperties && !storedProperties.isEmpty)
+                || !storedProperties.isEmpty
 
             guard shouldGenerateInitializer else {
+                return []
+            }
+
+            guard validateOmittedDependencyProperties(
+                storedProperties,
+                selectedProperties: selectedProperties,
+                configuration: configuration,
+                in: context
+            ) else {
                 return []
             }
 
@@ -283,8 +292,6 @@ private extension StoredPropertyInitMacro {
 
     /// `mode`와 `defaults` 설정에 따라 initializer 파라미터가 될 프로퍼티를 선택합니다.
     ///
-    /// 이번 단계에서는 `mode: .storedProperties` 규칙만 구현합니다.
-    ///
     /// - Parameters:
     ///   - storedProperties: 수집된 저장 프로퍼티 목록입니다.
     ///   - configuration: 매크로 attribute 설정입니다.
@@ -293,24 +300,29 @@ private extension StoredPropertyInitMacro {
         _ storedProperties: [StoredProperty],
         configuration: MacroConfiguration
     ) -> [StoredProperty] {
-        guard configuration.mode == .storedProperties else {
-            return []
-        }
+        switch configuration.mode {
+        case .storedProperties:
+            return storedProperties.filter { property in
+                if property.isInitializedNonWrapperLet {
+                    return false
+                }
 
-        return storedProperties.filter { property in
-            if property.isInitializedNonWrapperLet {
-                return false
+                guard !property.isWrappedInitProperty else {
+                    return true
+                }
+
+                guard property.initializerClauseSyntax != nil else {
+                    return true
+                }
+
+                return configuration.defaults == .parameters
             }
-
-            guard !property.isWrappedInitProperty else {
-                return true
+        case .dependencies:
+            return storedProperties.filter { property in
+                property.isStoredAsLet
+                    && property.initializerClauseSyntax == nil
+                    && !property.isWrappedInitProperty
             }
-
-            guard property.initializerClauseSyntax != nil else {
-                return true
-            }
-
-            return configuration.defaults == .parameters
         }
     }
 
@@ -330,6 +342,31 @@ private extension StoredPropertyInitMacro {
         for property in storedProperties where property.isInitializedNonWrapperLet {
             let diagnosticMessage = StoredPropertyInitDiagnosticMessage
                 .initializedLetDefaultedParameter(name: property.name.text)
+            context.diagnose(Diagnostic(node: Syntax(property.name), message: diagnosticMessage))
+            isValid = false
+        }
+
+        return isValid
+    }
+
+    /// 의존성 모드에서 initializer 본문이 초기화하지 않는 프로퍼티가 선언부에서 초기화 가능한지 검증합니다.
+    static func validateOmittedDependencyProperties(
+        _ storedProperties: [StoredProperty],
+        selectedProperties: [StoredProperty],
+        configuration: MacroConfiguration,
+        in context: some MacroExpansionContext
+    ) -> Bool {
+        guard configuration.mode == .dependencies else {
+            return true
+        }
+
+        let selectedNames = Set(selectedProperties.map { $0.name.text })
+        var isValid = true
+
+        for property in storedProperties
+            where !selectedNames.contains(property.name.text) && property.initializerClauseSyntax == nil {
+            let diagnosticMessage = StoredPropertyInitDiagnosticMessage
+                .uninitializedOmittedDependencyProperty(name: property.name.text)
             context.diagnose(Diagnostic(node: Syntax(property.name), message: diagnosticMessage))
             isValid = false
         }

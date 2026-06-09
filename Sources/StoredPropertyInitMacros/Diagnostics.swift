@@ -26,6 +26,9 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// 선언부 기본값이 있는 `let` 프로퍼티를 기본 인자 파라미터로 만들 수 없다는 에러입니다.
     case initializedLetDefaultedParameter(name: String)
 
+    /// 의존성 모드에서 제외된 미초기화 프로퍼티 때문에 initializer를 생성할 수 없다는 에러입니다.
+    case uninitializedOmittedDependencyProperty(name: String)
+
     /// Swift initializer에는 `open` 접근 제어자를 사용할 수 없다는 에러입니다.
     case unsupportedOpenAccess
 
@@ -52,6 +55,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             return "StoredPropertyInit requires an explicit type annotation for generated initializer parameters."
         case let .initializedLetDefaultedParameter(name):
             return "StoredPropertyInit cannot use initialized let property '\(name)' with defaults: .parameters."
+        case let .uninitializedOmittedDependencyProperty(name):
+            return "StoredPropertyInit cannot omit uninitialized property '\(name)' in mode: .dependencies."
         case .unsupportedOpenAccess:
             return "StoredPropertyInit cannot generate an open initializer. Use public access instead."
         }
@@ -81,6 +86,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             "requiresExplicitTypeAnnotation"
         case .initializedLetDefaultedParameter:
             "initializedLetDefaultedParameter"
+        case .uninitializedOmittedDependencyProperty:
+            "uninitializedOmittedDependencyProperty"
         case .unsupportedOpenAccess:
             "unsupportedOpenAccess"
         }
@@ -95,6 +102,7 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             .unsupportedDeclaration,
             .requiresExplicitTypeAnnotation,
             .initializedLetDefaultedParameter,
+            .uninitializedOmittedDependencyProperty,
             .unsupportedOpenAccess:
             .error
         case .skippedPropertyWrapper, .skippedStoredProperty, .skippedNonIdentifierPattern:

@@ -1,7 +1,7 @@
 /// 저장 프로퍼티 기반 initializer 생성을 위한 attached member macro입니다.
 ///
 /// 현재 단계에서는 선언 적용 가능 여부와 저장 프로퍼티 수집 규칙을 검증하고,
-/// `mode: .storedProperties`의 파라미터 선택 규칙에 따라 initializer를 생성합니다.
+/// 모드별 파라미터 선택 규칙에 따라 initializer를 생성합니다.
 ///
 /// 적용 가능한 선언:
 /// - `struct`
@@ -13,7 +13,7 @@
 /// - Parameters:
 ///   - access: 생성될 initializer의 접근 수준입니다.
 ///   - mode: initializer 생성 모드입니다.
-///   - defaults: 기본값을 파라미터에 반영할지 지정합니다.
+///   - defaults: 기본값을 파라미터에 반영할지 지정합니다. `mode: .dependencies`에서는 초기값이 있는 프로퍼티를 제외합니다.
 ///   - firstLabel: 첫 번째 파라미터 레이블 정책입니다.
 @attached(member, names: named(init))
 public macro StoredPropertyInit(
