@@ -49,7 +49,7 @@ public struct StoredPropertyInitMacro: MemberMacro {
             )
 
             let shouldGenerateInitializer = !selectedProperties.isEmpty
-                || (configuration.mode == .storedProperties && !storedProperties.isEmpty)
+                || !storedProperties.isEmpty
 
             guard shouldGenerateInitializer else {
                 return []
