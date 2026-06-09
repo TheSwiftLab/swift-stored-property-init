@@ -105,20 +105,21 @@ final class DependenciesModeTests: XCTestCase {
         )
     }
 
-    /// 의존성 모드에서 선택할 `let` 프로퍼티가 없으면 initializer를 생성하지 않습니다.
-    func testDependenciesModeDoesNotGenerateInitializerWhenNoDependencyPropertiesExist() throws {
+    /// 의존성 모드에서 선택할 파라미터가 없더라도 저장 프로퍼티가 있으면 empty initializer를 생성합니다.
+    func testDependenciesModeGeneratesEmptyInitializerWhenAllPropertiesAreOmitted() throws {
         assertMacroExpansion(
             """
             @StoredPropertyInit(mode: .dependencies)
             struct ViewState {
-                var title: String
-                let placeholder: String = ""
+                var title: String = ""
             }
             """,
             expandedSource: """
             struct ViewState {
-                var title: String
-                let placeholder: String = ""
+                var title: String = ""
+
+                init() {
+                }
             }
             """,
             macros: makeTestMacros()
