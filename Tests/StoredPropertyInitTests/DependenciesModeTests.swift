@@ -37,14 +37,14 @@ final class DependenciesModeTests: XCTestCase {
             @StoredPropertyInit(mode: .dependencies)
             struct Feature {
                 let repository: Repository
-                var cache: [String: Todo]
+                var cache: [String: Todo] = [:]
                 var isEnabled: Bool = true
             }
             """,
             expandedSource: """
             struct Feature {
                 let repository: Repository
-                var cache: [String: Todo]
+                var cache: [String: Todo] = [:]
                 var isEnabled: Bool = true
 
                 init(repository: Repository) {
@@ -88,6 +88,58 @@ final class DependenciesModeTests: XCTestCase {
             struct ToggleFeature {
                 let repository: Repository
                 @WrappedInit(type: Binding<Bool>.self)
+                @Binding var isOn: Bool = false
+            }
+            """,
+            expandedSource: """
+            struct ToggleFeature {
+                let repository: Repository
+                @Binding var isOn: Bool = false
+
+                init(repository: Repository) {
+                    self.repository = repository
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 의존성 모드에서 제외된 기본값 없는 `var`가 있으면 invalid initializer 생성을 막습니다.
+    func testDependenciesModeDiagnosesUninitializedOmittedVarProperty() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .dependencies)
+            struct Feature {
+                let repository: Repository
+                var cache: [String: Todo]
+            }
+            """,
+            expandedSource: """
+            struct Feature {
+                let repository: Repository
+                var cache: [String: Todo]
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit cannot omit uninitialized property 'cache' in mode: .dependencies.",
+                    line: 4,
+                    column: 9
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 의존성 모드에서 제외된 기본값 없는 `@WrappedInit` 프로퍼티가 있으면 invalid initializer 생성을 막습니다.
+    func testDependenciesModeDiagnosesUninitializedOmittedWrappedInitProperty() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .dependencies)
+            struct ToggleFeature {
+                let repository: Repository
+                @WrappedInit(type: Binding<Bool>.self)
                 @Binding var isOn: Bool
             }
             """,
@@ -95,12 +147,15 @@ final class DependenciesModeTests: XCTestCase {
             struct ToggleFeature {
                 let repository: Repository
                 @Binding var isOn: Bool
-
-                init(repository: Repository) {
-                    self.repository = repository
-                }
             }
             """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit cannot omit uninitialized property 'isOn' in mode: .dependencies.",
+                    line: 5,
+                    column: 18
+                )
+            ],
             macros: makeTestMacros()
         )
     }
