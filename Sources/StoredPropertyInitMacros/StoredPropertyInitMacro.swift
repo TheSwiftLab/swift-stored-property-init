@@ -55,6 +55,15 @@ public struct StoredPropertyInitMacro: MemberMacro {
                 return []
             }
 
+            guard validateOmittedDependencyProperties(
+                storedProperties,
+                selectedProperties: selectedProperties,
+                configuration: configuration,
+                in: context
+            ) else {
+                return []
+            }
+
             guard validateSelectedStoredProperties(selectedProperties, in: context) else {
                 return []
             }
@@ -333,6 +342,31 @@ private extension StoredPropertyInitMacro {
         for property in storedProperties where property.isInitializedNonWrapperLet {
             let diagnosticMessage = StoredPropertyInitDiagnosticMessage
                 .initializedLetDefaultedParameter(name: property.name.text)
+            context.diagnose(Diagnostic(node: Syntax(property.name), message: diagnosticMessage))
+            isValid = false
+        }
+
+        return isValid
+    }
+
+    /// 의존성 모드에서 initializer 본문이 초기화하지 않는 프로퍼티가 선언부에서 초기화 가능한지 검증합니다.
+    static func validateOmittedDependencyProperties(
+        _ storedProperties: [StoredProperty],
+        selectedProperties: [StoredProperty],
+        configuration: MacroConfiguration,
+        in context: some MacroExpansionContext
+    ) -> Bool {
+        guard configuration.mode == .dependencies else {
+            return true
+        }
+
+        let selectedNames = Set(selectedProperties.map { $0.name.text })
+        var isValid = true
+
+        for property in storedProperties
+            where !selectedNames.contains(property.name.text) && property.initializerClauseSyntax == nil {
+            let diagnosticMessage = StoredPropertyInitDiagnosticMessage
+                .uninitializedOmittedDependencyProperty(name: property.name.text)
             context.diagnose(Diagnostic(node: Syntax(property.name), message: diagnosticMessage))
             isValid = false
         }
