@@ -299,6 +299,31 @@ final class StoredPropertiesModeTests: XCTestCase {
         )
     }
 
+    /// 첫 label 생략 설정이 있어도 파라미터 타입을 만들 수 없는 저장 프로퍼티는 진단합니다.
+    func testStoredPropertiesModeOmittedFirstLabelRequiresExplicitTypeAnnotation() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(firstLabel: .omitted)
+            struct Box {
+                var value
+            }
+            """,
+            expandedSource: """
+            struct Box {
+                var value
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit requires an explicit type annotation for generated initializer parameters.",
+                    line: 3,
+                    column: 9
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
     /// 선택된 파라미터와 assignment는 원본 선언 순서를 유지합니다.
     func testStoredPropertiesModePreservesDeclarationOrder() throws {
         assertMacroExpansion(
