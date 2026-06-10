@@ -170,6 +170,28 @@ final class StoredPropertiesModeTests: XCTestCase {
         )
     }
 
+    /// 접근 제어자 설정은 생성 initializer 선언 앞에 렌더링합니다.
+    func testStoredPropertiesModeRendersPrivateInitializerAccess() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(.private)
+            struct Credentials {
+                let token: String
+            }
+            """,
+            expandedSource: """
+            struct Credentials {
+                let token: String
+
+                private init(token: String) {
+                    self.token = token
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
     /// 같은 파라미터 레이블과 타입을 가진 initializer가 이미 있으면 중복 생성하지 않습니다.
     func testStoredPropertiesModeSkipsInitializerWhenMatchingInitializerExists() throws {
         assertMacroExpansion(
