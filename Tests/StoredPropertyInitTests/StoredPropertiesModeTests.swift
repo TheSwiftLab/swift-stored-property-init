@@ -1,6 +1,7 @@
 import XCTest
 
 #if canImport(StoredPropertyInitMacros)
+import SwiftDiagnostics
 import SwiftSyntaxMacrosTestSupport
 
 /// `mode: .storedProperties`의 initializer 파라미터 선택 규칙을 검증하는 테스트입니다.
@@ -188,6 +189,31 @@ final class StoredPropertiesModeTests: XCTestCase {
                 }
             }
             """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 접근 제어자 설정이 있어도 파라미터 타입을 만들 수 없는 저장 프로퍼티는 진단합니다.
+    func testStoredPropertiesModePrivateAccessRequiresExplicitTypeAnnotation() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(.private)
+            struct Credentials {
+                var token
+            }
+            """,
+            expandedSource: """
+            struct Credentials {
+                var token
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit requires an explicit type annotation for generated initializer parameters.",
+                    line: 3,
+                    column: 9
+                )
+            ],
             macros: makeTestMacros()
         )
     }
