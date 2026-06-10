@@ -248,6 +248,31 @@ final class StoredPropertiesModeTests: XCTestCase {
         )
     }
 
+    /// `firstLabel: .omitted`는 생성 initializer의 첫 번째 외부 label만 `_`로 렌더링합니다.
+    func testStoredPropertiesModeOmitsOnlyFirstExternalLabelWhenRenderingInitializer() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(defaults: .parameters, firstLabel: .omitted)
+            struct Box<Value> {
+                let value: Value
+                var isPinned: Bool = false
+            }
+            """,
+            expandedSource: """
+            struct Box<Value> {
+                let value: Value
+                var isPinned: Bool = false
+
+                init(_ value: Value, isPinned: Bool = false) {
+                    self.value = value
+                    self.isPinned = isPinned
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
     /// 선택된 파라미터와 assignment는 원본 선언 순서를 유지합니다.
     func testStoredPropertiesModePreservesDeclarationOrder() throws {
         assertMacroExpansion(
