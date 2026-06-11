@@ -244,6 +244,14 @@ final class StoredPropertiesModeTests: XCTestCase {
                 }
             }
             """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
             macros: makeTestMacros()
         )
     }
@@ -267,6 +275,177 @@ final class StoredPropertiesModeTests: XCTestCase {
 
                 init(_ id: String) {
                     self.id = id
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 첫 번째 label 생략 설정에서도 내부 파라미터 이름만 다르면 중복으로 간주합니다.
+    func testStoredPropertiesModeSkipsUnlabeledInitializerWhenOnlyInternalParameterNameDiffers() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(firstLabel: .omitted)
+            struct Todo {
+                let id: String
+
+                init(_ identifier: String) {
+                    self.id = identifier
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init(_ identifier: String) {
+                    self.id = identifier
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 내부 파라미터 이름만 달라도 Swift 호출 시그니처가 같으면 중복으로 간주합니다.
+    func testStoredPropertiesModeSkipsInitializerWhenOnlyInternalParameterNameDiffers() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+
+                init(id identifier: String) {
+                    self.id = identifier
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init(id identifier: String) {
+                    self.id = identifier
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 외부 파라미터 label이 다르면 기존 initializer가 있어도 요청된 initializer를 생성합니다.
+    func testStoredPropertiesModeAllowsInitializerWhenExternalLabelDiffers() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+
+                init(_ id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init(_ id: String) {
+                    self.id = id
+                }
+
+                init(id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 파라미터 타입이 다르면 기존 initializer가 있어도 요청된 initializer를 생성합니다.
+    func testStoredPropertiesModeAllowsInitializerWhenParameterTypeDiffers() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+
+                init(id: UUID) {
+                    self.id = id.uuidString
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init(id: UUID) {
+                    self.id = id.uuidString
+                }
+
+                init(id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 파라미터 개수가 다르면 기존 initializer가 있어도 요청된 initializer를 생성합니다.
+    func testStoredPropertiesModeAllowsInitializerWhenParameterCountDiffers() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+                var title: String
+
+                init(id: String, title: String, isPinned: Bool) {
+                    self.id = id
+                    self.title = isPinned ? "[Pinned] \\(title)" : title
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+                var title: String
+
+                init(id: String, title: String, isPinned: Bool) {
+                    self.id = id
+                    self.title = isPinned ? "[Pinned] \\(title)" : title
+                }
+
+                init(id: String, title: String) {
+                    self.id = id
+                    self.title = title
                 }
             }
             """,
