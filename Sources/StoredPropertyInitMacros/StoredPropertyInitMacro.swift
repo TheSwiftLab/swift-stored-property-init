@@ -68,11 +68,13 @@ public struct StoredPropertyInitMacro: MemberMacro {
                 return []
             }
 
-            guard !hasMatchingInitializer(
+            guard !hasConflictingInitializer(
                 for: selectedProperties,
                 configuration: configuration,
                 in: declaration
             ) else {
+                let diagnosticMessage = StoredPropertyInitDiagnosticMessage.duplicateInitializerSignature
+                context.diagnose(Diagnostic(node: Syntax(node), message: diagnosticMessage))
                 return []
             }
 
@@ -121,9 +123,27 @@ private extension StoredPropertyInitMacro {
     }
 
     /// initializer 중복 여부를 비교할 때 사용하는 파라미터 시그니처입니다.
-    struct InitializerParameterSignature: Equatable {
+    struct InitializerParameterSignature {
         let externalLabel: String
+        let internalName: String
         let typeSource: String
+
+        /// Swift 호출 시그니처가 충돌하는지 비교합니다.
+        func conflicts(with other: InitializerParameterSignature) -> Bool {
+            hasSameDeclaredShape(as: other) || hasSameCallShape(as: other)
+        }
+
+        /// 외부 label, 내부 이름, 타입까지 같은 선언 형태인지 비교합니다.
+        func hasSameDeclaredShape(as other: InitializerParameterSignature) -> Bool {
+            externalLabel == other.externalLabel
+                && internalName == other.internalName
+                && typeSource == other.typeSource
+        }
+
+        /// Swift overload 관점에서 같은 호출 형태인지 비교합니다.
+        func hasSameCallShape(as other: InitializerParameterSignature) -> Bool {
+            externalLabel == other.externalLabel && typeSource == other.typeSource
+        }
     }
 
     /// `@StoredPropertyInit` attribute 인자로부터 읽은 설정입니다.
@@ -395,8 +415,8 @@ private extension StoredPropertyInitMacro {
         return isValid
     }
 
-    /// 같은 파라미터 레이블과 타입을 가진 initializer가 이미 선언되어 있는지 확인합니다.
-    static func hasMatchingInitializer(
+    /// 같은 호출 시그니처를 가진 initializer가 이미 선언되어 있는지 확인합니다.
+    static func hasConflictingInitializer(
         for storedProperties: [StoredProperty],
         configuration: MacroConfiguration,
         in declaration: some DeclGroupSyntax
@@ -411,7 +431,20 @@ private extension StoredPropertyInitMacro {
                 return false
             }
 
-            return initializerSignature(from: initializer) == generatedSignature
+            return initializerSignaturesConflict(
+                initializerSignature(from: initializer),
+                generatedSignature
+            )
+        }
+    }
+
+    /// 두 initializer 시그니처가 Swift 호출 관점에서 충돌하는지 비교합니다.
+    static func initializerSignaturesConflict(
+        _ lhs: [InitializerParameterSignature],
+        _ rhs: [InitializerParameterSignature]
+    ) -> Bool {
+        lhs.count == rhs.count && zip(lhs, rhs).allSatisfy { existing, generated in
+            existing.conflicts(with: generated)
         }
     }
 
@@ -422,6 +455,7 @@ private extension StoredPropertyInitMacro {
         initializer.signature.parameterClause.parameters.map { parameter in
             InitializerParameterSignature(
                 externalLabel: parameter.firstName.text,
+                internalName: parameter.secondName?.text ?? parameter.firstName.text,
                 typeSource: parameter.type.trimmedDescription
             )
         }
@@ -439,6 +473,7 @@ private extension StoredPropertyInitMacro {
 
             return InitializerParameterSignature(
                 externalLabel: externalLabel,
+                internalName: property.name.text,
                 typeSource: parameterTypeSource(for: property)
             )
         }
