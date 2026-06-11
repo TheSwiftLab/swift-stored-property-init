@@ -1,6 +1,7 @@
 import XCTest
 
 #if canImport(StoredPropertyInitMacros)
+import SwiftDiagnostics
 import SwiftSyntaxMacrosTestSupport
 
 /// `mode: .dependencies`의 initializer 파라미터 선택 규칙을 검증하는 테스트입니다.
@@ -197,6 +198,44 @@ final class DependenciesModeTests: XCTestCase {
             expandedSource: """
             struct Feature {
                 let repository: Repository
+
+                init(repository: Repository) {
+                    self.repository = repository
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 의존성 모드에서도 기존 initializer의 시그니처가 다르면 요청된 initializer를 생성합니다.
+    func testDependenciesModeAllowsInitializerWhenExistingInitializerSignatureDiffers() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit(mode: .dependencies)
+            struct Feature {
+                let repository: Repository
+
+                init(repository: Repository, logger: Logger) {
+                    self.repository = repository
+                }
+            }
+            """,
+            expandedSource: """
+            struct Feature {
+                let repository: Repository
+
+                init(repository: Repository, logger: Logger) {
+                    self.repository = repository
+                }
 
                 init(repository: Repository) {
                     self.repository = repository
