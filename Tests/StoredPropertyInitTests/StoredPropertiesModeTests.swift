@@ -246,7 +246,7 @@ final class StoredPropertiesModeTests: XCTestCase {
             """,
             diagnostics: [
                 DiagnosticSpec(
-                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    message: duplicateInitializerWarningMessage,
                     line: 1,
                     column: 1,
                     severity: .warning
@@ -280,7 +280,7 @@ final class StoredPropertiesModeTests: XCTestCase {
             """,
             diagnostics: [
                 DiagnosticSpec(
-                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    message: duplicateInitializerWarningMessage,
                     line: 1,
                     column: 1,
                     severity: .warning
@@ -314,7 +314,7 @@ final class StoredPropertiesModeTests: XCTestCase {
             """,
             diagnostics: [
                 DiagnosticSpec(
-                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    message: duplicateInitializerWarningMessage,
                     line: 1,
                     column: 1,
                     severity: .warning
@@ -348,12 +348,42 @@ final class StoredPropertiesModeTests: XCTestCase {
             """,
             diagnostics: [
                 DiagnosticSpec(
-                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    message: duplicateInitializerWarningMessage,
                     line: 1,
                     column: 1,
                     severity: .warning
                 )
             ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 기존 async initializer만 있으면 sync initializer 생성을 허용합니다.
+    func testStoredPropertiesModeAllowsInitializerWhenOnlyMatchingAsyncInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+
+                init(id: String) async {
+                    self.id = id
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init(id: String) async {
+                    self.id = id
+                }
+
+                init(id: String) {
+                    self.id = id
+                }
+            }
+            """,
             macros: makeTestMacros()
         )
     }

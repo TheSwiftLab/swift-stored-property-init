@@ -61,7 +61,7 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
         case let .uninitializedOmittedDependencyProperty(name):
             return "StoredPropertyInit cannot omit uninitialized property '\(name)' in mode: .dependencies."
         case .duplicateInitializerSignature:
-            return "StoredPropertyInit skipped generation because an initializer with the same signature already exists."
+            return "StoredPropertyInit skipped generation because a matching initializer exists."
         case .unsupportedOpenAccess:
             return "StoredPropertyInit cannot generate an open initializer. Use public access instead."
         }

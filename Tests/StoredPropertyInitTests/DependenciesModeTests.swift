@@ -206,7 +206,7 @@ final class DependenciesModeTests: XCTestCase {
             """,
             diagnostics: [
                 DiagnosticSpec(
-                    message: "StoredPropertyInit skipped generation because an initializer with the same signature already exists.",
+                    message: duplicateInitializerWarningMessage,
                     line: 1,
                     column: 1,
                     severity: .warning

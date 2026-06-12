@@ -78,16 +78,10 @@ public struct StoredPropertyInitMacro: MemberMacro {
                 return []
             }
 
-            return [
-                renderInitializer(
-                    from: selectedProperties,
-                    configuration: configuration
-                )
-            ]
+            return [renderInitializer(from: selectedProperties, configuration: configuration)]
         }
 
-        let diagnosticMessage = diagnosticMessage(for: declaration)
-        context.diagnose(Diagnostic(node: Syntax(declaration), message: diagnosticMessage))
+        context.diagnose(Diagnostic(node: Syntax(declaration), message: diagnosticMessage(for: declaration)))
 
         return []
     }
@@ -119,6 +113,21 @@ private extension StoredPropertyInitMacro {
         /// 선언부 기본값이 있는 non-wrapper `let` 저장 프로퍼티인지 나타냅니다.
         var isInitializedNonWrapperLet: Bool {
             isStoredAsLet && initializerClauseSyntax != nil && !isWrappedInitProperty
+        }
+    }
+
+    /// initializer 중복 여부를 비교할 때 사용하는 시그니처입니다.
+    struct InitializerSignature {
+        let isAsync: Bool
+        let parameters: [InitializerParameterSignature]
+
+        /// Swift 호출 시그니처가 충돌하는지 비교합니다.
+        func conflicts(with other: InitializerSignature) -> Bool {
+            isAsync == other.isAsync
+                && parameters.count == other.parameters.count
+                && zip(parameters, other.parameters).allSatisfy { existing, generated in
+                    existing.conflicts(with: generated)
+                }
         }
     }
 
@@ -431,42 +440,34 @@ private extension StoredPropertyInitMacro {
                 return false
             }
 
-            return initializerSignaturesConflict(
-                initializerSignature(from: initializer),
-                generatedSignature
-            )
-        }
-    }
-
-    /// 두 initializer 시그니처가 Swift 호출 관점에서 충돌하는지 비교합니다.
-    static func initializerSignaturesConflict(
-        _ lhs: [InitializerParameterSignature],
-        _ rhs: [InitializerParameterSignature]
-    ) -> Bool {
-        lhs.count == rhs.count && zip(lhs, rhs).allSatisfy { existing, generated in
-            existing.conflicts(with: generated)
+            return initializerSignature(from: initializer).conflicts(with: generatedSignature)
         }
     }
 
     /// 기존 initializer 선언의 파라미터 시그니처를 반환합니다.
     static func initializerSignature(
         from initializer: InitializerDeclSyntax
-    ) -> [InitializerParameterSignature] {
-        initializer.signature.parameterClause.parameters.map { parameter in
+    ) -> InitializerSignature {
+        let parameters = initializer.signature.parameterClause.parameters.map { parameter in
             InitializerParameterSignature(
                 externalLabel: parameter.firstName.text,
                 internalName: parameter.secondName?.text ?? parameter.firstName.text,
                 typeSource: parameter.type.trimmedDescription
             )
         }
+
+        return InitializerSignature(
+            isAsync: initializer.signature.effectSpecifiers?.asyncSpecifier != nil,
+            parameters: parameters
+        )
     }
 
     /// 생성할 initializer의 파라미터 시그니처를 반환합니다.
     static func generatedInitializerSignature(
         for storedProperties: [StoredProperty],
         configuration: MacroConfiguration
-    ) -> [InitializerParameterSignature] {
-        storedProperties.enumerated().map { index, property in
+    ) -> InitializerSignature {
+        let parameters = storedProperties.enumerated().map { index, property in
             let externalLabel = index == 0 && configuration.firstLabel == .omitted
                 ? "_"
                 : property.name.text
@@ -477,6 +478,8 @@ private extension StoredPropertyInitMacro {
                 typeSource: parameterTypeSource(for: property)
             )
         }
+
+        return InitializerSignature(isAsync: false, parameters: parameters)
     }
 
     /// 선택된 저장 프로퍼티 목록을 initializer 선언으로 렌더링합니다.
