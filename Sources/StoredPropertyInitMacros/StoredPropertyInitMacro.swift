@@ -55,15 +55,6 @@ public struct StoredPropertyInitMacro: MemberMacro {
                 return []
             }
 
-            guard validateOmittedDependencyProperties(
-                storedProperties,
-                selectedProperties: selectedProperties,
-                configuration: configuration,
-                in: context
-            ) else {
-                return []
-            }
-
             guard validateSelectedStoredProperties(selectedProperties, in: context) else {
                 return []
             }
@@ -75,6 +66,15 @@ public struct StoredPropertyInitMacro: MemberMacro {
             ) else {
                 let diagnosticMessage = StoredPropertyInitDiagnosticMessage.duplicateInitializerSignature
                 context.diagnose(Diagnostic(node: Syntax(node), message: diagnosticMessage))
+                return []
+            }
+
+            guard validateOmittedDependencyProperties(
+                storedProperties,
+                selectedProperties: selectedProperties,
+                configuration: configuration,
+                in: context
+            ) else {
                 return []
             }
 
