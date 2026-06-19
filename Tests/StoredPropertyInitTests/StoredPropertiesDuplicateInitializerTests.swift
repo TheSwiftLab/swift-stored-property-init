@@ -235,6 +235,36 @@ final class StoredPropertiesDedupeTests: XCTestCase {
             macros: makeTestMacros()
         )
     }
+
+    /// 기존 variadic initializer는 일반 파라미터 initializer와 중복으로 보지 않습니다.
+    func testStoredPropertiesModeAllowsInitializerWhenOnlyMatchingVariadicInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let tag: String
+
+                init(tag: String...) {
+                    self.tag = tag.first ?? ""
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let tag: String
+
+                init(tag: String...) {
+                    self.tag = tag.first ?? ""
+                }
+
+                init(tag: String) {
+                    self.tag = tag
+                }
+            }
+            """,
+            macros: makeTestMacros()
+        )
+    }
 }
 
 final class StoredPropertiesTypeSpellingTests: XCTestCase {
