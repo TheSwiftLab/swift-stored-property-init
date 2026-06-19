@@ -136,6 +136,7 @@ private extension StoredPropertyInitMacro {
         let externalLabel: String
         let internalName: String
         let typeSource: String
+        let isVariadic: Bool
 
         /// Swift 호출 시그니처가 충돌하는지 비교합니다.
         func conflicts(with other: InitializerParameterSignature) -> Bool {
@@ -147,11 +148,14 @@ private extension StoredPropertyInitMacro {
             externalLabel == other.externalLabel
                 && internalName == other.internalName
                 && typeSource == other.typeSource
+                && isVariadic == other.isVariadic
         }
 
         /// Swift overload 관점에서 같은 호출 형태인지 비교합니다.
         func hasSameCallShape(as other: InitializerParameterSignature) -> Bool {
-            externalLabel == other.externalLabel && typeSource == other.typeSource
+            externalLabel == other.externalLabel
+                && typeSource == other.typeSource
+                && isVariadic == other.isVariadic
         }
     }
 
@@ -452,7 +456,8 @@ private extension StoredPropertyInitMacro {
             InitializerParameterSignature(
                 externalLabel: parameter.firstName.text,
                 internalName: parameter.secondName?.text ?? parameter.firstName.text,
-                typeSource: parameter.type.trimmedDescription
+                typeSource: parameter.type.trimmedDescription,
+                isVariadic: parameter.ellipsis != nil
             )
         }
 
@@ -475,7 +480,8 @@ private extension StoredPropertyInitMacro {
             return InitializerParameterSignature(
                 externalLabel: externalLabel,
                 internalName: property.name.text,
-                typeSource: parameterTypeSource(for: property)
+                typeSource: parameterTypeSource(for: property),
+                isVariadic: false
             )
         }
 
