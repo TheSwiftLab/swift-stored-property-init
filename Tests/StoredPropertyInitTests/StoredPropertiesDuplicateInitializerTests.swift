@@ -176,6 +176,108 @@ final class StoredPropertiesDedupeTests: XCTestCase {
         )
     }
 
+    /// 기존 throwing initializer는 일반 initializer와 중복으로 간주합니다.
+    func testStoredPropertiesModeSkipsInitializerWhenMatchingThrowingInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+
+                init(id: String) throws {
+                    self.id = id
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init(id: String) throws {
+                    self.id = id
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: duplicateInitializerWarningMessage,
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 기존 failable initializer는 일반 initializer와 중복으로 간주합니다.
+    func testStoredPropertiesModeSkipsInitializerWhenMatchingFailableInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+
+                init?(id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init?(id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: duplicateInitializerWarningMessage,
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 기존 implicitly unwrapped failable initializer는 일반 initializer와 중복으로 간주합니다.
+    func testStoredPropertiesModeSkipsInitializerWhenMatchingIUOFailableInitializerExists() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Todo {
+                let id: String
+
+                init!(id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            expandedSource: """
+            struct Todo {
+                let id: String
+
+                init!(id: String) {
+                    self.id = id
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: duplicateInitializerWarningMessage,
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
     /// 외부 파라미터 label이 다르면 기존 initializer가 있어도 요청된 initializer를 생성합니다.
     func testStoredPropertiesModeAllowsInitializerWhenExternalLabelDiffers() throws {
         assertMacroExpansion(
