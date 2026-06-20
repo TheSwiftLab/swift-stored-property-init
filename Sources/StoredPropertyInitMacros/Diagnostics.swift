@@ -29,6 +29,9 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
     /// 의존성 모드에서 제외된 미초기화 프로퍼티 때문에 initializer를 생성할 수 없다는 에러입니다.
     case uninitializedOmittedDependencyProperty(name: String)
 
+    /// 같은 시그니처의 initializer가 이미 있어 생성을 건너뛰었다는 경고입니다.
+    case duplicateInitializerSignature
+
     /// Swift initializer에는 `open` 접근 제어자를 사용할 수 없다는 에러입니다.
     case unsupportedOpenAccess
 
@@ -57,6 +60,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             return "StoredPropertyInit cannot use initialized let property '\(name)' with defaults: .parameters."
         case let .uninitializedOmittedDependencyProperty(name):
             return "StoredPropertyInit cannot omit uninitialized property '\(name)' in mode: .dependencies."
+        case .duplicateInitializerSignature:
+            return "StoredPropertyInit skipped generation because a matching initializer exists."
         case .unsupportedOpenAccess:
             return "StoredPropertyInit cannot generate an open initializer. Use public access instead."
         }
@@ -88,6 +93,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             "initializedLetDefaultedParameter"
         case .uninitializedOmittedDependencyProperty:
             "uninitializedOmittedDependencyProperty"
+        case .duplicateInitializerSignature:
+            "duplicateInitializerSignature"
         case .unsupportedOpenAccess:
             "unsupportedOpenAccess"
         }
@@ -105,6 +112,8 @@ enum StoredPropertyInitDiagnosticMessage: DiagnosticMessage {
             .uninitializedOmittedDependencyProperty,
             .unsupportedOpenAccess:
             .error
+        case .duplicateInitializerSignature:
+            .warning
         case .skippedPropertyWrapper, .skippedStoredProperty, .skippedNonIdentifierPattern:
             .note
         }

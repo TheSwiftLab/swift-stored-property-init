@@ -1,6 +1,7 @@
 import XCTest
 
 #if canImport(StoredPropertyInitMacros)
+import SwiftDiagnostics
 import SwiftSyntaxMacrosTestSupport
 
 /// `mode: .storedProperties`에서 empty initializer 생성을 검증하는 테스트입니다.
@@ -87,6 +88,43 @@ final class StoredPropertiesEmptyInitializerTests: XCTestCase {
             expandedSource: """
             struct Options {
                 var page = 1
+
+                init() {
+                }
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: duplicateInitializerWarningMessage,
+                    line: 1,
+                    column: 1,
+                    severity: .warning
+                )
+            ],
+            macros: makeTestMacros()
+        )
+    }
+
+    /// 기존 initializer의 파라미터 개수가 다르면 empty initializer를 생성합니다.
+    func testStoredPropertiesModeGeneratesEmptyInitializerWhenExistingInitializerHasParameters() throws {
+        assertMacroExpansion(
+            """
+            @StoredPropertyInit
+            struct Options {
+                var page = 1
+
+                init(page: Int) {
+                    self.page = page
+                }
+            }
+            """,
+            expandedSource: """
+            struct Options {
+                var page = 1
+
+                init(page: Int) {
+                    self.page = page
+                }
 
                 init() {
                 }
