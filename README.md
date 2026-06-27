@@ -215,7 +215,7 @@ Supported initializer access levels:
 - `static`, computed, `lazy`, multi-binding, and non-identifier-pattern properties are skipped.
 - Property-wrapper properties are skipped unless they are annotated with `@WrappedInit(type:)`.
 - Selected non-wrapper properties must have explicit type annotations.
-- `mode: .dependencies` cannot omit an uninitialized stored property if that would leave the generated initializer invalid.
+- `mode: .dependencies` must include every stored `let` property without an initial value. Any other uninitialized stored property that would be omitted makes the generated initializer invalid.
 - The macro does not generate throwing, failable, required, convenience, Codable, or inheritance-aware initializers.
 - The macro does not provide property-level customization except `@WrappedInit(type:)`.
 
