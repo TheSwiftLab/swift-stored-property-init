@@ -166,7 +166,7 @@ init(isOn: Binding<Bool>) {
 }
 ```
 
-`@WrappedInit(type:)` uses the supplied wrapper type as the initializer parameter type and assigns through backing storage.
+`@WrappedInit(type:)` renders the supplied `type:` expression as the initializer parameter type after removing `.self`, then assigns that parameter through backing storage. In the example, `Binding<Bool>.self` produces `Binding<Bool>` and the initializer assigns it with `self._isOn = isOn`.
 
 ## First Parameter Label
 
