@@ -89,7 +89,7 @@ public init(repository: TodoRepository, analytics: AnalyticsClient) {
 }
 ```
 
-`mode: .dependencies` includes only stored `let` properties without initial values. It excludes `var` properties, property-wrapper properties, and properties with initial values.
+`mode: .dependencies` includes every stored `let` property without an initial value. It excludes `var` properties, property-wrapper properties, and properties with initial values.
 
 ## Default Value Policy
 
