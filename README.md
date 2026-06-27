@@ -6,7 +6,7 @@ Swift already provides a memberwise initializer for many structs. `StoredPropert
 
 ## Installation
 
-Add this package to your Swift package dependencies:
+This package has not published a release tag yet. Until the first release, add the development branch to your Swift package dependencies:
 
 ```swift
 // Package.swift
@@ -29,7 +29,7 @@ Then add `StoredPropertyInit` to the target that uses the macro:
 )
 ```
 
-After the first release tag is published, prefer a version requirement instead of a branch requirement.
+After the first release tag is published, prefer a version requirement such as `from: "0.1.0"` instead of a branch requirement.
 
 ## Why StoredPropertyInit
 
